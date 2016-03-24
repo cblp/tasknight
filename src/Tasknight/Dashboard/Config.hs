@@ -1,3 +1,8 @@
-module Tasknight.Dashboard.Config (Config(..)) where
+module Tasknight.Dashboard.Config (Config(..), emptyConfig) where
 
-data Config = Config
+import Tasknight.Provider (Provider)
+
+data Config = Config { providers :: [Provider] }
+
+emptyConfig :: Config
+emptyConfig = Config { providers = [] }
