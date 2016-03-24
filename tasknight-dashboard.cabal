@@ -3,7 +3,7 @@ version:            0.0.0.0
 synopsis:           A web dashboard of tasks to do.
 description:        A web dashboard of tasks to do.
 homepage:           http://github.com/cblp/tasknight-dashboard#readme
-license:            BSD3
+license:            GPL-3
 license-file:       LICENSE
 author:             Yuriy Syrovetskiy
 maintainer:         cblp@cblp.su
