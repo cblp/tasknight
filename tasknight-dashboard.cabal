@@ -18,7 +18,9 @@ library
     exposed-modules:  Tasknight.Dashboard
                       Tasknight.Dashboard.Config
                       Tasknight.Provider
+                      Tasknight.Providers.Feedly
                       Tasknight.Providers.Gmail
+                      Tasknight.Providers.Twitter
     build-depends:    base >= 4.7 && < 5
     default-language: Haskell2010
     ghc-options:      -Wall

@@ -1,7 +1,19 @@
-module Tasknight.Providers.Gmail (Gmail(..)) where
+module Tasknight.Providers.Gmail (Gmail(..), ListSpec(..), gmail, inboxUnread, starred) where
 
-import Tasknight.Provider (IsProvider)
+import Tasknight.Provider (Provider(..))
 
-data Gmail = Gmail { login :: String }
+-- | List specificator
+data ListSpec = ListSpec
 
-instance IsProvider Gmail
+inboxUnread :: ListSpec
+inboxUnread = ListSpec
+
+starred :: ListSpec
+starred = ListSpec
+
+-- | Provider configuration
+data Gmail = Gmail { login :: String, lists :: [ListSpec] }
+
+-- | Provider constructor
+gmail :: Gmail -> Provider
+gmail _ = Provider
