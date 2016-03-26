@@ -1,5 +1,9 @@
-{-# LANGUAGE ExistentialQuantification #-}
+module Tasknight.Provider (Item(..), ItemList(..), Provider(..)) where
 
-module Tasknight.Provider (Provider(..)) where
+data Item = Item
+    deriving Show
 
-data Provider = Provider
+data ItemList = ItemList { name :: String, items :: [Item] }
+    deriving Show
+
+data Provider = Provider { getLists :: IO [ItemList] }

@@ -1,3 +1,5 @@
+{-# LANGUAGE NamedFieldPuns #-}
+
 module Tasknight.Providers.Gmail (Gmail(..), ListSpec(..), gmail, inboxUnread, starred) where
 
 import Tasknight.Provider (Provider(..))
@@ -16,4 +18,6 @@ data Gmail = Gmail { login :: String, lists :: [ListSpec] }
 
 -- | Provider constructor
 gmail :: Gmail -> Provider
-gmail _ = Provider
+gmail Gmail{} =
+    let getLists = error "Gmail.getLists"
+    in Provider{getLists}
