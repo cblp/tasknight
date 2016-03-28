@@ -22,6 +22,11 @@ library
                       Tasknight.Providers.Gmail
                       Tasknight.Providers.Twitter
     build-depends:    base >= 4.7 && < 5
+                    , bytestring
+                    , connection
+                    , google-oauth2
+                    , imap
+                    , text
     default-language: Haskell2010
     ghc-options:      -Wall
 
