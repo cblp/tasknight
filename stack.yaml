@@ -8,4 +8,10 @@ extra-deps:
   - monadIO-0.10.1.4  # for imap
   - rolling-queue-0.1  # for imap
 
-  - google-oauth2-0.2.0  # for Tasknight.Provider.Gmail
+  - google-oauth2-0.2.1  # for Tasknight.Provider.Gmail
+
+# todo:
+#   try libs:
+#     - hoauth2
+#     - authenticate-oauth
+#     - HaskellNet (IMAP)

@@ -3,13 +3,14 @@
 
 module Tasknight.Providers.Gmail (Gmail(..), ListSpec(..), gmail, inboxUnread, starred) where
 
-import Control.Applicative (liftA2)
-import Debug.Trace
-import Network.Connection
-import Network.IMAP
-import System.Mem.StableName (makeStableName)
+import            Control.Applicative (liftA2)
+import qualified  Data.ByteString.Char8 as ByteString
+import            Debug.Trace
+import            Network.Connection
+import            Network.IMAP
+import            System.Mem.StableName (makeStableName)
 
-import Tasknight.OAuth2 (OAuth2Provider(..))
+import Tasknight.OAuth2 (OAuth2Provider(..), OAuth2Scope, TokenRequest(..))
 import Tasknight.Provider (Provider(..))
 
 -- | List specificator
@@ -37,13 +38,13 @@ gmail Gmail{gmail_login, gmail_oauth2provider = OAuth2Provider{getToken}} =
             }
         imapSettings = Nothing
         getLists = do
-            token <- getToken gmail_login
+            token <- ByteString.pack <$> getToken TokenRequest{tokenId=gmail_login, scopes=gmailScopes}
             conn <- connectServer connectionParams imapSettings
             -- traceM "login..."
             -- login conn gmail_login "?" >>= traceShowM
             traceM "authenticate..."
             authenticate conn "XOAUTH2" $ \conn' -> do
-                traceShowM =<< liftA2 (==) (makeStableName conn) (makeStableName conn')
+                traceShowM =<< makeStableName conn `eq` makeStableName conn'
                 traceM "sendCommand token..."
                 sendCommand conn' token >>= traceShowM
                 traceM "noop..."
@@ -57,3 +58,8 @@ gmail Gmail{gmail_login, gmail_oauth2provider = OAuth2Provider{getToken}} =
             traceM "Done."
             pure []
     in Provider{getLists}
+
+  where eq = liftA2 (==)
+
+gmailScopes :: [OAuth2Scope]
+gmailScopes = error "Gmail scopes"

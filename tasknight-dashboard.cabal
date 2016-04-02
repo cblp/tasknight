@@ -17,6 +17,7 @@ library
     hs-source-dirs:   src
     exposed-modules:  Tasknight.Dashboard
                       Tasknight.Dashboard.Config
+                      Tasknight.OAuth2
                       Tasknight.Provider
                       Tasknight.Providers.Feedly
                       Tasknight.Providers.Gmail
