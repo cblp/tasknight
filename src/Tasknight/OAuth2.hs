@@ -6,7 +6,7 @@ module Tasknight.OAuth2
 import Control.Applicative ((<|>))
 import Network.Google.OAuth2 (OAuth2Client(..), OAuth2Scope, OAuth2Token, getAccessToken)
 
-import Tasknight.Cache (Cache(..))
+import Tasknight.Storage (Storage(..))
 
 type TokenId = FilePath
 
@@ -14,10 +14,10 @@ data TokenRequest = TokenRequest{tokenId :: TokenId, scopes :: [OAuth2Scope]}
 
 data OAuth2Provider = OAuth2Provider{getToken :: TokenRequest -> IO OAuth2Token}
 
-defaultOAuth2Provider :: Cache String String  -- ^ config storage
-                      -> Cache TokenId OAuth2Token  -- ^ token cache
+defaultOAuth2Provider :: Storage String String  -- ^ config storage
+                      -> Storage TokenId OAuth2Token  -- ^ token cache
                       -> OAuth2Provider
-defaultOAuth2Provider Cache{getValue=getConfigValue} Cache{getValue=getCacheValue} =
+defaultOAuth2Provider Storage{getValue=getConfigValue} Storage{getValue=getCacheValue} =
     OAuth2Provider{getToken}
   where
     getToken TokenRequest{tokenId, scopes} = do

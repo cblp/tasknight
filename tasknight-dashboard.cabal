@@ -15,8 +15,8 @@ cabal-version:      >= 1.10
 
 library
     hs-source-dirs:   src
-    exposed-modules:  Tasknight.Cache
-                      Tasknight.Cache.Local
+    exposed-modules:  Tasknight.Storage
+                      Tasknight.Storage.Local
                       Tasknight.Dashboard
                       Tasknight.Dashboard.Config
                       Tasknight.OAuth2
