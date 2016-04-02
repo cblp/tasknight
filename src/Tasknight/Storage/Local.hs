@@ -3,8 +3,6 @@
 module Tasknight.Storage.Local (localCache, localConfig) where
 
 import Control.Exception (Exception, catchJust)
-import Control.Monad.IO.Class (liftIO)
-import Control.Monad.Trans.Maybe (MaybeT(..))
 import System.Environment.XDG.BaseDir (getUserCacheFile, getUserConfigFile)
 import System.IO.Error (isDoesNotExistError)
 
@@ -20,15 +18,15 @@ localStorage :: (String -> String -> IO FilePath) -> String -> Storage FilePath 
 localStorage getStorageFilePath appName = Storage{getValue, getStorageLocation}
   where
     getValue key = do
-        filePath <- liftIO $ getStorageLocation key
-        catchMaybeT isDoesNotExistError (readFile filePath)
+        filePath <- getStorageLocation key
+        catchMaybe isDoesNotExistError (readFile filePath)
     getStorageLocation = getStorageFilePath appName
 
-catchMaybeT :: Exception e
+catchMaybe  :: Exception e
             => (e -> Bool)  -- ^ predicate
             -> IO a         -- ^ body
-            -> MaybeT IO a
-catchMaybeT p body = MaybeT $
+            -> IO (Maybe a)
+catchMaybe p body =
     catchJust
         (\ex -> if p ex then Just () else Nothing)
         (Just <$> body)
