@@ -5,7 +5,8 @@ module Tasknight.OAuth2
 
 import Data.Monoid ((<>))
 import Network.Google.OAuth2 (OAuth2Client(..), OAuth2Scope, OAuth2Token, getAccessToken)
-import System.FilePath ((</>))
+import System.Directory (createDirectoryIfMissing)
+import System.FilePath ((</>), takeDirectory)
 
 import Tasknight.Storage (Storage(..))
 
@@ -24,7 +25,7 @@ defaultOAuth2Provider :: Storage String String  -- ^ config storage
                       -> Storage UserId OAuth2Token  -- ^ token cache
                       -> OAuth2Provider
 defaultOAuth2Provider Storage{getValue=getConfigValue, getStorageLocation=getConfigLocation}
-                      Storage{getValue=getCacheValue} =
+                      Storage{getStorageLocation=getCacheLocation} =
     OAuth2Provider{getToken}
   where
     getToken TokenRequest{clientRegisterPage, scopes, serviceName, userId} = do
@@ -45,9 +46,7 @@ defaultOAuth2Provider Storage{getValue=getConfigValue, getStorageLocation=getCon
                     , "  - " <> clientSecretLocation
                     ]
         let client = OAuth2Client{clientId, clientSecret}
-        mCachedToken <- getCacheValue userId
-        token <- fromMaybeA (getAccessToken client scopes Nothing) mCachedToken
+        tokenCacheFile <- getCacheLocation userId
+        createDirectoryIfMissing True $ takeDirectory tokenCacheFile
+        token <- getAccessToken client scopes $ Just tokenCacheFile
         error "unimplemented defaultOAuth2Provider.getToken" token
-
-fromMaybeA :: Applicative f => f a -> Maybe a -> f a
-fromMaybeA b = maybe b pure

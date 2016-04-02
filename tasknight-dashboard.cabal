@@ -27,12 +27,14 @@ library
     build-depends:    base >= 4.7 && < 5
                     , bytestring
                     , connection
+                    , directory
                     , filepath
                     , google-oauth2
                     , imap
                     , text
                     , transformers
                     , xdg-basedir
+                      -- ^ replace with System.Directory.getXdgDirectory
     default-language: Haskell2010
     ghc-options:      -Wall
 
