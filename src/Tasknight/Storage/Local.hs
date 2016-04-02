@@ -3,6 +3,8 @@
 module Tasknight.Storage.Local (localCache, localConfig) where
 
 import Control.Exception (Exception, catchJust)
+import qualified Data.Text as Text
+import qualified Data.Text.IO as Text
 import System.Environment.XDG.BaseDir (getUserCacheFile, getUserConfigFile)
 import System.IO.Error (isDoesNotExistError)
 
@@ -19,7 +21,7 @@ localStorage getStorageFilePath appName = Storage{getValue, getStorageLocation}
   where
     getValue key = do
         filePath <- getStorageLocation key
-        catchMaybe isDoesNotExistError (readFile filePath)
+        catchMaybe isDoesNotExistError (Text.unpack . Text.strip <$> Text.readFile filePath)
     getStorageLocation = getStorageFilePath appName
 
 catchMaybe  :: Exception e
