@@ -68,4 +68,4 @@ gmail Gmail{gmail_login, gmail_oauth2provider = OAuth2Provider{getToken}} =
   where eq = liftA2 (==)
 
 gmailScopes :: [OAuth2Scope]
-gmailScopes = error "Gmail scopes"
+gmailScopes = ["https://mail.google.com/"]
