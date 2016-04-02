@@ -3,7 +3,7 @@
 
 module Main (main) where
 
-import Tasknight.Cache.Local (localCache)
+import Tasknight.Cache.Local (localCache, localConfig)
 import Tasknight.Dashboard (mainWith)
 import Tasknight.Dashboard.Config (Config(..), emptyConfig)
 import Tasknight.OAuth2 (defaultOAuth2Provider)
@@ -20,9 +20,10 @@ main = mainWith config
         [ gmail Gmail
               { gmail_lists = [inboxUnread, starred]
               , gmail_login = "fromagxo"
-              , gmail_oauth2provider = defaultOAuth2Provider cache
+              , gmail_oauth2provider = defaultOAuth2Provider configStorage tokenCache
               }
         , feedly Feedly{}
         , twitter Twitter{}
         ]
-    cache = localCache appName
+    configStorage = localConfig appName
+    tokenCache = localCache appName
