@@ -3,12 +3,10 @@
 
 module Tasknight.Providers.Gmail (Gmail(..), ListSpec(..), gmail, inboxUnread, starred) where
 
-import            Control.Applicative (liftA2)
 import qualified  Data.ByteString.Char8 as ByteString
 import            Debug.Trace
 import            Network.Connection
 import            Network.IMAP
-import            System.Mem.StableName (makeStableName)
 
 import Tasknight.OAuth2 (OAuth2Provider(..), OAuth2Scope, TokenRequest(..))
 import Tasknight.Provider (Provider(..))
@@ -49,12 +47,11 @@ gmail Gmail{gmail_login, gmail_oauth2provider = OAuth2Provider{getToken}} =
             -- traceM "login..."
             -- login conn gmail_login "?" >>= traceShowM
             traceM "authenticate..."
-            authenticate conn "XOAUTH2" $ \conn' -> do
-                traceShowM =<< makeStableName conn `eq` makeStableName conn'
+            authenticate conn "XOAUTH2" $ \_ -> do
                 traceM "sendCommand token..."
-                sendCommand conn' token >>= traceShowM
+                sendCommand conn token >>= traceShowM
                 traceM "noop..."
-                noop conn' >>= traceShowM
+                noop conn >>= traceShowM
             traceM "noop..."
             noop conn >>= traceShowM
             traceM "list..."
@@ -64,8 +61,6 @@ gmail Gmail{gmail_login, gmail_oauth2provider = OAuth2Provider{getToken}} =
             traceM "Done."
             pure []
     in Provider{getLists}
-
-  where eq = liftA2 (==)
 
 gmailScopes :: [OAuth2Scope]
 gmailScopes = ["https://mail.google.com/"]
