@@ -3,6 +3,7 @@
 
 module Main (main) where
 
+import Tasknight.Cache.Local (localCache)
 import Tasknight.Dashboard (mainWith)
 import Tasknight.Dashboard.Config (Config(..), emptyConfig)
 import Tasknight.OAuth2 (defaultOAuth2Provider)
@@ -13,6 +14,7 @@ import Tasknight.Providers.Twitter (Twitter(..), twitter)
 main :: IO ()
 main = mainWith config
   where
+    appName = "tasknight"
     config = emptyConfig{providers}
     providers =
         [ gmail Gmail
@@ -23,4 +25,4 @@ main = mainWith config
         , feedly Feedly{}
         , twitter Twitter{}
         ]
-    cache = error "LocalCache"
+    cache = localCache appName

@@ -15,7 +15,9 @@ cabal-version:      >= 1.10
 
 library
     hs-source-dirs:   src
-    exposed-modules:  Tasknight.Dashboard
+    exposed-modules:  Tasknight.Cache
+                      Tasknight.Cache.Local
+                      Tasknight.Dashboard
                       Tasknight.Dashboard.Config
                       Tasknight.OAuth2
                       Tasknight.Provider
@@ -28,6 +30,7 @@ library
                     , google-oauth2
                     , imap
                     , text
+                    , xdg-basedir
     default-language: Haskell2010
     ghc-options:      -Wall
 
