@@ -48,5 +48,4 @@ defaultOAuth2Provider Storage{getValue=getConfigValue, getStorageLocation=getCon
         let client = OAuth2Client{clientId, clientSecret}
         tokenCacheFile <- getCacheLocation userId
         createDirectoryIfMissing True $ takeDirectory tokenCacheFile
-        token <- getAccessToken client scopes $ Just tokenCacheFile
-        error "unimplemented defaultOAuth2Provider.getToken" token
+        getAccessToken client scopes $ Just tokenCacheFile
