@@ -1,3 +1,5 @@
 module Tasknight.Storage (Storage(..)) where
 
-data Storage k v = Storage {getValue :: k -> IO v}
+import Control.Monad.Trans.Maybe (MaybeT)
+
+data Storage k v = Storage{getValue :: k -> MaybeT IO v, getStorageLocation :: k -> IO String}
