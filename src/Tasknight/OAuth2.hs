@@ -46,7 +46,8 @@ defaultOAuth2Provider Storage{getValue=getConfigValue, getStorageLocation=getCon
                     ]
         let client = OAuth2Client{clientId, clientSecret}
         mCachedToken <- getCacheValue userId
-        token <- case mCachedToken of
-            Just token -> pure token
-            Nothing -> getAccessToken client scopes Nothing
+        token <- fromMaybeA (getAccessToken client scopes Nothing) mCachedToken
         error "unimplemented defaultOAuth2Provider.getToken" token
+
+fromMaybeA :: Applicative f => f a -> Maybe a -> f a
+fromMaybeA b = maybe b pure
