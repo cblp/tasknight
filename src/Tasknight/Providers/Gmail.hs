@@ -38,7 +38,9 @@ gmail Gmail{gmail_login, gmail_oauth2provider = OAuth2Provider{getToken}} =
             }
         imapSettings = Nothing
         getLists = do
-            token <- ByteString.pack <$> getToken TokenRequest{tokenId=gmail_login, scopes=gmailScopes}
+            let tokenRequest = TokenRequest
+                    {tokenId=gmail_login, scopes=gmailScopes, serviceName="Gmail"}
+            token <- ByteString.pack <$> getToken tokenRequest
             conn <- connectServer connectionParams imapSettings
             -- traceM "login..."
             -- login conn gmail_login "?" >>= traceShowM

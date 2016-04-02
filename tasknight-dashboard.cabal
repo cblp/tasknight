@@ -27,6 +27,7 @@ library
     build-depends:    base >= 4.7 && < 5
                     , bytestring
                     , connection
+                    , filepath
                     , google-oauth2
                     , imap
                     , text

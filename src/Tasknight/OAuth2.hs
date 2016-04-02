@@ -8,12 +8,13 @@ import Control.Monad.Trans.Class (lift)
 import Control.Monad.Trans.Maybe (runMaybeT)
 import Data.Monoid ((<>))
 import Network.Google.OAuth2 (OAuth2Client(..), OAuth2Scope, OAuth2Token, getAccessToken)
+import System.FilePath ((</>))
 
 import Tasknight.Storage (Storage(..))
 
 type TokenId = FilePath
 
-data TokenRequest = TokenRequest{tokenId :: TokenId, scopes :: [OAuth2Scope]}
+data TokenRequest = TokenRequest{tokenId :: TokenId, scopes :: [OAuth2Scope], serviceName :: String}
 
 data OAuth2Provider = OAuth2Provider{getToken :: TokenRequest -> IO OAuth2Token}
 
@@ -25,24 +26,22 @@ defaultOAuth2Provider Storage{getValue=getConfigValue, getStorageLocation=getCon
     OAuth2Provider{getToken}
   where
 
-    keyClientId = "clientId"
-    keyClientSecret = "clientSecret"
+    getMandatoryConfigValue (paramKey, paramDescription) = do
+        mValue <- runMaybeT $ getConfigValue paramKey
+        case mValue of
+            Just value ->
+                pure value
+            Nothing -> do
+                confLoc <- getConfigLocation paramKey
+                fail $ "Please put " <> paramDescription <> " in " <> confLoc
 
-    getToken TokenRequest{tokenId, scopes} = do
-        mClientId <- runMaybeT (getConfigValue keyClientId)
-        clientId <- case mClientId of
-            Just clientId ->
-                pure clientId
-            Nothing -> do
-                confLoc <- getConfigLocation keyClientId
-                fail $ "Please specify clientId in " <> confLoc
-        mClientSecret <- runMaybeT (getConfigValue keyClientSecret)
-        clientSecret <- case mClientSecret of
-            Just clientSecret ->
-                pure clientSecret
-            Nothing -> do
-                confLoc <- getConfigLocation keyClientSecret
-                fail $ "Please specify clientSecret in " <> confLoc
+    getToken TokenRequest{serviceName, tokenId, scopes} = do
+        -- (key, description)
+        let paramClientId = (serviceName </> "clientId", serviceName <> " client ID")
+            paramClientSecret = (serviceName </> "clientSecret", serviceName <> " client secret")
+
+        clientId <- getMandatoryConfigValue paramClientId
+        clientSecret <- getMandatoryConfigValue paramClientSecret
         let client = OAuth2Client{clientId, clientSecret}
         mToken <- runMaybeT $ getCacheValue tokenId <|> lift (getAccessToken client scopes Nothing)
         -- case mtoken of
