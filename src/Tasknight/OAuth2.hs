@@ -46,6 +46,6 @@ defaultOAuth2Provider Storage{getValue=getConfigValue, getStorageLocation=getCon
                     , "  - " <> clientSecretLocation
                     ]
         let client = OAuth2Client{clientId, clientSecret}
-        tokenCacheFile <- getCacheLocation userId
+        tokenCacheFile <- getCacheLocation $ serviceName </> userId
         createDirectoryIfMissing True $ takeDirectory tokenCacheFile
         getAccessToken client scopes $ Just tokenCacheFile
