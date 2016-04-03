@@ -3,10 +3,11 @@
 module Tasknight.OAuth2
     (OAuth2Provider(..), OAuth2Scope, OAuth2Token, TokenRequest(..), defaultOAuth2Provider) where
 
-import Data.Monoid ((<>))
-import Network.Google.OAuth2 (OAuth2Client(..), OAuth2Scope, OAuth2Token, getAccessToken)
-import System.Directory (createDirectoryIfMissing)
-import System.FilePath ((</>), takeDirectory)
+import            Data.Monoid ((<>))
+import            Network.Google.OAuth2 (OAuth2Client(..), OAuth2Scope, OAuth2Token)
+import qualified  Network.Google.OAuth2 as Google
+import            System.Directory (createDirectoryIfMissing)
+import            System.FilePath ((</>), takeDirectory)
 
 import Tasknight.Storage (Storage(..))
 
@@ -19,16 +20,16 @@ data TokenRequest = TokenRequest
     , userId              :: UserId
     }
 
-data OAuth2Provider = OAuth2Provider{getToken :: TokenRequest -> IO OAuth2Token}
+data OAuth2Provider = OAuth2Provider{getAccessToken :: TokenRequest -> IO OAuth2Token}
 
 defaultOAuth2Provider :: Storage String String  -- ^ config storage
                       -> Storage UserId OAuth2Token  -- ^ token cache
                       -> OAuth2Provider
 defaultOAuth2Provider Storage{getValue=getConfigValue, getStorageLocation=getConfigLocation}
                       Storage{getStorageLocation=getCacheLocation} =
-    OAuth2Provider{getToken}
+    OAuth2Provider{getAccessToken}
   where
-    getToken TokenRequest{clientRegisterPage, scopes, serviceName, userId} = do
+    getAccessToken TokenRequest{clientRegisterPage, scopes, serviceName, userId} = do
         let keyClientId = serviceName </> "clientId"
             keyClientSecret = serviceName </> "clientSecret"
         mClientId <- getConfigValue keyClientId
@@ -48,4 +49,4 @@ defaultOAuth2Provider Storage{getValue=getConfigValue, getStorageLocation=getCon
         let client = OAuth2Client{clientId, clientSecret}
         tokenCacheFile <- getCacheLocation $ serviceName </> userId
         createDirectoryIfMissing True $ takeDirectory tokenCacheFile
-        getAccessToken client scopes $ Just tokenCacheFile
+        Google.getAccessToken client scopes $ Just tokenCacheFile

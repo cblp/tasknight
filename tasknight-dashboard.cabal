@@ -29,9 +29,11 @@ library
                     , bytestring
                     , connection
                     , directory
+                    , errors
                     , filepath
                     , google-oauth2
                     , imap
+                    , list-t
                     , text
                     , transformers
                     , xdg-basedir

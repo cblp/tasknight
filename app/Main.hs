@@ -6,9 +6,9 @@ module Main (main) where
 import Tasknight.Dashboard (mainWith)
 import Tasknight.Dashboard.Config (Config(..), emptyConfig)
 import Tasknight.OAuth2 (defaultOAuth2Provider)
-import Tasknight.Providers.Feedly (Feedly(..), feedly)
+-- import Tasknight.Providers.Feedly (Feedly(..), feedly)
 import Tasknight.Providers.Gmail (Gmail(..), gmail, inboxUnread, starred)
-import Tasknight.Providers.Twitter (Twitter(..), twitter)
+-- import Tasknight.Providers.Twitter (Twitter(..), twitter)
 import Tasknight.Storage.Local (localCache, localConfig)
 
 main :: IO ()
@@ -22,8 +22,8 @@ main = mainWith config
               , gmail_login = "fromagxo"
               , gmail_oauth2provider = defaultOAuth2Provider configStorage tokenCache
               }
-        , feedly Feedly{}
-        , twitter Twitter{}
+        -- , feedly Feedly{}
+        -- , twitter Twitter{}
         ]
     configStorage = localConfig appName
     tokenCache = localCache appName
