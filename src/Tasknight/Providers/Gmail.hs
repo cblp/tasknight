@@ -3,7 +3,9 @@
 
 module Tasknight.Providers.Gmail (Gmail(..), ListSpec(..), gmail, inboxUnread, starred) where
 
+import            Data.ByteString.Base64 as Base64
 import qualified  Data.ByteString.Char8 as ByteString
+import            Data.Monoid ((<>))
 import            Debug.Trace
 import            Network.Connection
 import            Network.IMAP
@@ -42,24 +44,20 @@ gmail Gmail{gmail_login, gmail_oauth2provider = OAuth2Provider{getToken}} =
                     , serviceName = "Gmail"
                     , userId = gmail_login
                     }
-            token <- ByteString.pack <$> getToken tokenRequest
+            accessToken <- ByteString.pack <$> getToken tokenRequest
             conn <- connectServer connectionParams imapSettings
-            -- traceM "login..."
-            -- login conn gmail_login "?" >>= traceShowM
+            let authRequest = mconcat
+                    [ "user=", ByteString.pack gmail_login, "\1"
+                    , "auth=Bearer ", accessToken, "\1\1" ] :: ByteString.ByteString
+                authRequestEncoded = Base64.encode authRequest
             traceM "authenticate..."
-            authenticate conn "XOAUTH2" $ \_ -> do
-                traceM "sendCommand token..."
-                sendCommand conn token >>= traceShowM
-                traceM "noop..."
-                noop conn >>= traceShowM
-            traceM "noop..."
-            noop conn >>= traceShowM
+            sendCommand conn ("AUTHENTICATE XOAUTH2 " <> authRequestEncoded) >>= traceShowM
             traceM "list..."
             list conn "*" >>= traceShowM
             traceM "logout..."
             logout conn >>= traceShowM
             traceM "Done."
-            pure []
+            fail "not implemented Gmail.getLists"
     in Provider{getLists}
 
 gmailScopes :: [OAuth2Scope]

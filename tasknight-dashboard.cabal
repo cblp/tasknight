@@ -25,6 +25,7 @@ library
                       Tasknight.Providers.Gmail
                       Tasknight.Providers.Twitter
     build-depends:    base >= 4.7 && < 5
+                    , base64-bytestring
                     , bytestring
                     , connection
                     , directory
@@ -34,7 +35,7 @@ library
                     , text
                     , transformers
                     , xdg-basedir
-                      -- ^ replace with System.Directory.getXdgDirectory
+                      -- ^ TODO(cblp, 2016-04-03) replace with System.Directory.getXdgDirectory
     default-language: Haskell2010
     ghc-options:      -Wall
 
