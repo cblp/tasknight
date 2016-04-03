@@ -22,6 +22,6 @@ mainWith Config{providers} = runScript $ do
 showDashboard :: [ItemList] -> ByteString
 showDashboard lists =
     Yaml.encode $ object
-        [ Text.pack name .= [Text.pack item | Item item <- items]
+        [ Text.pack name .= [item | Item item <- items]
         | ItemList{name, items} <- lists
         ]
