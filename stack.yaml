@@ -15,3 +15,6 @@ extra-deps:
 #     - hoauth2
 #     - authenticate-oauth
 #     - HaskellNet (IMAP)
+
+ghc-options:
+  tasknight-dashboard: '-Werror'
