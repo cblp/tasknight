@@ -54,7 +54,7 @@ inboxUnread = ListSpec $ \conn _folders -> do
         []              -> pure []
         _               -> fail $ "searchResult = " <> show searchResult
     msgs <- for msgids $ \msgid ->
-        imap "fetch messages" . fetch conn $ Text.pack (show msgid) <> " (BODY.PEEK[HEADER])"
+        imap "fetch messages" . fetchG conn $ Text.pack (show msgid) <> " (FLAGS)"
     pure  [ ItemList  { name = "Mailbox description (examine) for " <> inbox
                       , items = [Item . Text.pack $ show item | item <- examineResult]
                       }
