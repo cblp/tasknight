@@ -29,11 +29,15 @@ library
                     , bytestring
                     , connection
                     , directory
+                    , email-header
                     , errors
                     , filepath
                     , google-oauth2
+                    , hsemail
                     , imap
                     , list-t
+                    , parsec
+                    , pretty-show
                     , text
                     , transformers
                     , xdg-basedir
