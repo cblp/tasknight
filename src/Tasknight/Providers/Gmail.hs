@@ -133,8 +133,8 @@ gmailScopes = ["https://mail.google.com/"]
 imap :: Text -> ListT IO IMAP.CommandResult -> Script [IMAP.UntaggedResult]
 imap commandDescription = ExceptT . fmap (fmapL translateError) . IMAP.simpleFormat
   where
-    translateError e =
-        Text.unpack $ "When executing IMAP command \"" <> commandDescription <> "\", got error: " <> e
+    translateError e = Text.unpack $
+        "When executing IMAP command \"" <> commandDescription <> "\", got error: " <> e
 
 assertE :: Monad m => Bool -> String -> ExceptT String m ()
 assertE True _ = pure ()
