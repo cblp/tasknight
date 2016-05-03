@@ -4,58 +4,47 @@
 module Tasknight.Providers.Gmail
     (Gmail(..), ListSpec, foldersList, gmail, inboxUnread, starred) where
 
-import           Control.Error                         (ExceptT(..), Script, fmapL, throwE)
 import           Control.Monad.Trans.Class             (lift)
-import qualified Data.ByteString.Base64                as Base64
 import qualified Data.ByteString.Char8                 as ByteString
+import           Data.Foldable                         (fold)
 import           Data.Monoid                           ((<>))
-import           Data.Text                             (Text)
 import qualified Data.Text                             as Text
 import           Data.Traversable                      (for)
-import           ListT                                 (ListT)
 import           Network.Connection                    (ConnectionParams(..), TLSSettings(..))
-import qualified Network.IMAP                          as IMAP
-import qualified Network.IMAP.Types                    as IMAP
 import           Text.Parsec
 import           Text.ParserCombinators.Parsec.Rfc2822 (Field(Subject), GenericMessage(Message),
                                                         message)
 
-import Tasknight.OAuth2   (OAuth2Provider(..), OAuth2Scope, TokenRequest(..))
-import Tasknight.Provider (Item(..), ItemList(..), Provider(..))
+import           Tasknight.OAuth2    (OAuth2Provider(..), OAuth2Scope, TokenRequest(..))
+import           Tasknight.Provider  (Item(..), ItemList(..), Provider(..))
+import           Tasknight.Util.IMAP (ImapM)
+import qualified Tasknight.Util.IMAP as IMAP
 
 -- | Provider configuration
 data Gmail = Gmail
     {gmail_login :: String, gmail_lists :: [ListSpec], gmail_oauth2provider :: OAuth2Provider}
 
-data Folder = Folder
-    {folder_name :: Text, folder_specialName :: Maybe Text, folder_flags :: [IMAP.NameAttribute]}
-
 -- | List specificator
-newtype ListSpec = ListSpec (IMAP.IMAPConnection -> [Folder] -> Script [ItemList])
+newtype ListSpec = ListSpec ([IMAP.Folder] -> ImapM [ItemList])
 
 -- | Special list containing all folders, for debugging needs
 foldersList :: ListSpec
-foldersList = ListSpec $ \_conn folders -> do
+foldersList = ListSpec $ \folders -> do
     let folderItems =
             [ Item $ folder_name
                   <> maybe "" (" | " <>) folder_specialName
                   <> " | " <> Text.pack (show folder_flags)
-            | Folder{folder_name, folder_specialName, folder_flags} <- folders
+            | IMAP.Folder{IMAP.folder_name, IMAP.folder_specialName, IMAP.folder_flags} <- folders
             ]
     pure [ItemList{name = "Folders", items = folderItems}]
 
 -- | Unread messages in inbox
 inboxUnread :: ListSpec
-inboxUnread = ListSpec $ \conn _folders -> do
+inboxUnread = ListSpec $ \_folders -> do
     let inbox = "INBOX"
-    examineResult <- imap "examine from inbox" $ IMAP.examine conn inbox
-    searchResult <- imap "search unseen" $ IMAP.search conn "UNSEEN"
-    msgids <- case searchResult of
-        [IMAP.Search msgids]  -> pure $ take 10 msgids
-        []                    -> pure []
-        _                     -> fail $ "searchResult = " <> show searchResult
-    fetchedMessages <- for msgids $ \msgid ->
-        imap "fetch messages" . IMAP.fetchG conn $ Text.pack (show msgid) <> " (BODY.PEEK[HEADER])"
+    inboxAttributes <- IMAP.examine inbox
+    msgids <- IMAP.searchUnseen
+    fetchedMessages <- for msgids IMAP.fetchHeaders
     let msgs =  [ subject
                 | messageItems <- fetchedMessages
                 , IMAP.Fetch itemProperties <- messageItems
@@ -66,7 +55,7 @@ inboxUnread = ListSpec $ \conn _folders -> do
                 , Subject subject <- fields
                 ]
     pure  [ ItemList  { name = "Mailbox description (examine) for " <> inbox
-                      , items = [Item . Text.pack $ show item | item <- examineResult]
+                      , items = [Item . Text.pack $ show item | item <- inboxAttributes]
                       }
           , ItemList  { name = "Unread messages in " <> inbox
                       , items = [Item . Text.pack $ show item | item <- msgs]
@@ -93,7 +82,6 @@ gmail Gmail{gmail_login, gmail_lists, gmail_oauth2provider = OAuth2Provider{getA
         , connectionUseSecure = Just tls
         , connectionUseSocks = Nothing
         }
-    imapSettings = Nothing
 
     getLists = do
         let serviceName = "Gmail"
@@ -104,48 +92,15 @@ gmail Gmail{gmail_login, gmail_lists, gmail_oauth2provider = OAuth2Provider{getA
                 , userId = gmail_login
                 }
         accessToken <- lift $ ByteString.pack <$> getAccessToken tokenRequest
-        conn <- lift $ IMAP.connectServer connectionParams imapSettings
-        let authRequest = mconcat
-                [ "user=", ByteString.pack gmail_login, "\1"
-                , "auth=Bearer ", accessToken, "\1\1" ]
-            authRequestEncoded = Base64.encode authRequest
-        authResult <- imap "authenticate" .
-            IMAP.sendCommand conn $ "AUTHENTICATE XOAUTH2 " <> authRequestEncoded
-        assertE (isExpectedAuthResult authResult) $ "authentication problem: " <> show authResult
-        listResult <- imap "list *" $ IMAP.list conn "*"
-
-        let folders = [ Folder  { folder_name = inboxName
-                                , folder_specialName = specialName flags
-                                , folder_flags = flags
-                                }
-                      | IMAP.ListR{IMAP.inboxName, IMAP.flags} <- listResult ]
-        lists <- fmap mconcat . for gmail_lists $ \(ListSpec getList) ->
-            getList conn folders
-
-        logoutResult <- imap "logout" $ IMAP.logout conn
-        assertE (logoutResult == [IMAP.Bye]) $ "logout failed: " <> show logoutResult
-
-        pure lists
+        let imapCredentials =
+                IMAP.Credentials{IMAP.user = ByteString.pack gmail_login, IMAP.accessToken}
+        IMAP.runImap connectionParams imapCredentials $ do
+            folders <- IMAP.list
+            foldFor gmail_lists $ \(ListSpec getList) ->
+                getList folders
 
 gmailScopes :: [OAuth2Scope]
 gmailScopes = ["https://mail.google.com/"]
 
-imap :: Text -> ListT IO IMAP.CommandResult -> Script [IMAP.UntaggedResult]
-imap commandDescription = ExceptT . fmap (fmapL translateError) . IMAP.simpleFormat
-  where
-    translateError e = Text.unpack $
-        "When executing IMAP command \"" <> commandDescription <> "\", got error: " <> e
-
-assertE :: Monad m => Bool -> String -> ExceptT String m ()
-assertE True _ = pure ()
-assertE False e = throwE $ "Gmail: " <> e
-
-isExpectedAuthResult :: [IMAP.UntaggedResult] -> Bool
-isExpectedAuthResult [IMAP.OKResult{}, IMAP.Capabilities{}] = True
-isExpectedAuthResult _ = False
-
-specialName :: [IMAP.NameAttribute] -> Maybe Text
-specialName []                                      = Nothing
-specialName (IMAP.OtherNameAttr "HasChildren" : as) = specialName as
-specialName (IMAP.OtherNameAttr n             : _ ) = Just n
-specialName (_                                : as) = specialName as
+foldFor :: (Traversable t, Applicative f, Monoid b) => t a -> (a -> f b) -> f b
+foldFor xs f = fold <$> traverse f xs

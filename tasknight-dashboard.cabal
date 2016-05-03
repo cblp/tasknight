@@ -24,6 +24,7 @@ library
                       Tasknight.Providers.Feedly
                       Tasknight.Providers.Gmail
                       Tasknight.Providers.Twitter
+    other-modules:    Tasknight.Util.IMAP
     build-depends:    base >= 4.7 && < 5
                     , base64-bytestring
                     , bytestring
@@ -36,6 +37,7 @@ library
                     , hsemail
                     , imap
                     , list-t
+                    , mtl
                     , parsec
                     , pretty-show
                     , text
