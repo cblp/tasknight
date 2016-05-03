@@ -4,21 +4,19 @@
 module Tasknight.Providers.Gmail
     (Gmail(..), ListSpec, foldersList, gmail, inboxUnread, starred) where
 
-import           Control.Monad.Trans.Class             (lift)
-import qualified Data.ByteString.Char8                 as ByteString
-import           Data.Foldable                         (fold)
-import           Data.Monoid                           ((<>))
-import qualified Data.Text                             as Text
-import           Data.Traversable                      (for)
-import           Network.Connection                    (ConnectionParams(..), TLSSettings(..))
-import           Text.Parsec
-import           Text.ParserCombinators.Parsec.Rfc2822 (Field(Subject), GenericMessage(Message),
-                                                        message)
+import           Control.Monad.Trans.Class (lift)
+import qualified Data.ByteString.Char8     as ByteString
+import           Data.Foldable             (fold)
+import           Data.Monoid               ((<>))
+import qualified Data.Text                 as Text
+import           Data.Traversable          (for)
+import           Network.Connection        (ConnectionParams(..), TLSSettings(..))
 
-import           Tasknight.OAuth2    (OAuth2Provider(..), OAuth2Scope, TokenRequest(..))
-import           Tasknight.Provider  (Item(..), ItemList(..), Provider(..))
-import           Tasknight.Util.IMAP (ImapM)
-import qualified Tasknight.Util.IMAP as IMAP
+import           Tasknight.OAuth2     (OAuth2Provider(..), OAuth2Scope, TokenRequest(..))
+import           Tasknight.Provider   (Item(..), ItemList(..), Provider(..))
+import           Tasknight.Util.Email (subject)
+import           Tasknight.Util.IMAP  (ImapM)
+import qualified Tasknight.Util.IMAP  as IMAP
 
 -- | Provider configuration
 data Gmail = Gmail
@@ -44,21 +42,13 @@ inboxUnread = ListSpec $ \_folders -> do
     let inbox = "INBOX"
     inboxAttributes <- IMAP.examine inbox
     msgids <- IMAP.searchUnseen
-    fetchedMessages <- for msgids IMAP.fetchHeaders
-    let msgs =  [ subject
-                | messageItems <- fetchedMessages
-                , IMAP.Fetch itemProperties <- messageItems
-                , IMAP.Body body <- itemProperties
-                , Right msg <- pure . parse message "message body" $ ByteString.unpack body
-                  -- ^ TODO(cblp, 2016-04-30) log error if left
-                , Message fields _body <- pure msg
-                , Subject subject <- fields
-                ]
+    subjects <- for msgids $ \msgid ->
+        subject <$> IMAP.fetchHeaders msgid
     pure  [ ItemList  { name = "Mailbox description (examine) for " <> inbox
                       , items = [Item . Text.pack $ show item | item <- inboxAttributes]
                       }
           , ItemList  { name = "Unread messages in " <> inbox
-                      , items = [Item . Text.pack $ show item | item <- msgs]
+                      , items = [Item . Text.pack $ show item | item <- subjects]
                       }
           ]
 

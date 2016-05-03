@@ -7,18 +7,21 @@ module Tasknight.Util.IMAP
     , authenticateOAuth2, examine, fetchHeaders, list, runImap, searchUnseen
     ) where
 
-import           Control.Error          (ExceptT(..), Script, fmapL)
-import           Control.Monad.Except   (throwError, MonadError)
-import           Control.Monad.Reader   (ReaderT, ask, lift, runReaderT)
-import           Data.ByteString        (ByteString)
-import qualified Data.ByteString.Base64 as Base64
-import           Data.Monoid            ((<>))
-import           Data.Text              (Text)
-import qualified Data.Text              as Text
-import           ListT                  (ListT)
-import           Network.Connection     (ConnectionParams(..))
-import           Network.IMAP.Types     (CommandResult, IMAPConnection, NameAttribute(..),
-                                         UntaggedResult(..))
+import           Control.Error                         (ExceptT(..), Script, fmapL)
+import           Control.Monad.Except                  (MonadError, throwError)
+import           Control.Monad.Reader                  (ReaderT, ask, lift, runReaderT)
+import           Data.ByteString                       (ByteString)
+import qualified Data.ByteString.Base64                as Base64
+import qualified Data.ByteString.Char8                 as ByteString
+import           Data.Monoid                           ((<>))
+import           Data.Text                             (Text)
+import qualified Data.Text                             as Text
+import           ListT                                 (ListT)
+import           Network.Connection                    (ConnectionParams(..))
+import           Network.IMAP.Types                    (CommandResult(..), IMAPConnection,
+                                                        NameAttribute(..), UntaggedResult(..))
+import           Text.Parsec                           (parse)
+import qualified Text.ParserCombinators.Parsec.Rfc2822 as Rfc2822
 
 import qualified Network.IMAP as Impl
 
@@ -31,11 +34,11 @@ data Credentials = Credentials{user :: ByteString, accessToken :: ByteString}
 data Folder = Folder
     {folder_name :: Text, folder_specialName :: Maybe Text, folder_flags :: [NameAttribute]}
 
--- | Specialize
+-- | TODO(cblp, 2016-05-03) Specialize
 type FolderAttribute = UntaggedResult
 
--- | Specialize
-type MessageHeader = UntaggedResult
+-- | TODO(cblp, 2016-05-03) Specialize
+-- type MessageHeader = UntaggedResult
 
 imapAction :: Text -> (Connection -> ListT IO CommandResult) -> ImapM [UntaggedResult]
 imapAction commandDescription imapCommand = do
@@ -58,9 +61,21 @@ searchUnseen = do
         [Search msgids] -> pure msgids
         _               -> fail $ show searchResult
 
-fetchHeaders :: Int -> ImapM [MessageHeader]
-fetchHeaders msgid = imapAction "fetch messages" $
-    \conn -> Impl.fetchG conn $ Text.pack (show msgid) <> " (BODY.PEEK[HEADER])"
+fetchHeaders :: Int -> ImapM [Rfc2822.Field]
+fetchHeaders msgid = do
+    fetchResult <- imapAction "fetch messages" $
+        \conn -> Impl.fetchG conn $ Text.pack (show msgid) <> " (BODY.PEEK[HEADER])"
+    properties <- case fetchResult of
+        [Fetch properties]  -> pure properties
+        _                   -> fail $ "IMAP fetchResult: " <> show fetchResult
+    body <- case properties of
+        [Body body] -> pure body
+        _           -> fail $ "IMAP fetched properties: " <> show properties
+    Rfc2822.Message fields _body <-
+        case parse Rfc2822.message "message body" $ ByteString.unpack body of
+            Left err  -> fail $ "IMAP fetch: parse message: " <> show err
+            Right msg -> pure msg
+    pure fields
 
 authenticateOAuth2 :: Credentials -> ImapM ()
 authenticateOAuth2 Credentials{user, accessToken} = do
