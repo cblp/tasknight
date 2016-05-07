@@ -8,13 +8,13 @@ packages:
     extra-dep: true
 
 extra-deps:
-  - imap-0.2.0.3  # for Tasknight.Provider.Gmail
+  - imap-0.2.0.3  # for Tasknight.Util.IMAP
   - monadIO-0.10.1.4  # for imap
   - rolling-queue-0.1  # for imap
 
   - google-oauth2-0.2.1  # for Tasknight.Provider.Gmail
 
-  # - email-header-0.2.0  # for Tasknight.Provider.Gmail
+  # - email-header-0.2.0  # for Tasknight.Util.IMAP
 
 # todo:
 #   try libs:

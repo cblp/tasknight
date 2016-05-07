@@ -1,15 +1,16 @@
-{-# LANGUAGE NamedFieldPuns    #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Main (main) where
 
 import           Tasknight.Dashboard        (mainWith)
-import           Tasknight.Dashboard.Config (Config (..), emptyConfig)
+import           Tasknight.Dashboard.Config (Config(..), emptyConfig)
 import           Tasknight.OAuth2           (defaultOAuth2Provider)
--- import           Tasknight.Providers.Feedly (Feedly (..), feedly)
-import           Tasknight.Providers.Gmail  (Gmail (..), gmail, inboxUnread)
--- import           Tasknight.Providers.Twitter (Twitter (..), twitter)
+import           Tasknight.Providers.Gmail  (Gmail(..), gmail)
+import qualified Tasknight.Providers.Gmail  as Gmail
 import           Tasknight.Storage.Local    (localCache, localConfig)
+-- import           Tasknight.Providers.Feedly (Feedly (..), feedly)
+-- import           Tasknight.Providers.Twitter (Twitter (..), twitter)
 
 main :: IO ()
 main = mainWith config
@@ -18,9 +19,9 @@ main = mainWith config
     config = emptyConfig{providers}
     providers =
         [ gmail Gmail
-              { gmail_lists = [ inboxUnread
-                              -- , starred
-                              -- , foldersList
+              { gmail_lists = [ Gmail.inboxUnread
+                              , Gmail.starred
+                              -- , Gmail.foldersList
                               ]
               , gmail_login = "fromagxo"
               , gmail_oauth2provider = defaultOAuth2Provider configStorage tokenCache

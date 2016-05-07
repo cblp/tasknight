@@ -4,15 +4,17 @@
 
 module Tasknight.Util.IMAP
     ( Connection, Credentials(..), Folder(..), ImapM, NameAttribute, UntaggedResult(..)
-    , authenticateOAuth2, examine, fetchHeaders, list, runImap, searchUnseen
+    , authenticateOAuth2, examine, fetchHeaders, list, runImap, searchAll, searchUnseen, select
     ) where
 
 import           Control.Error                         (ExceptT(..), Script, fmapL)
 import           Control.Monad.Except                  (MonadError, throwError)
 import           Control.Monad.Reader                  (ReaderT, ask, lift, runReaderT)
 import           Data.ByteString                       (ByteString)
+import qualified Data.ByteString                       as BS
 import qualified Data.ByteString.Base64                as Base64
-import qualified Data.ByteString.Char8                 as ByteString
+import qualified Data.ByteString.Char8                 as BSC
+import           Data.Function                         ((&))
 import           Data.Monoid                           ((<>))
 import           Data.Text                             (Text)
 import qualified Data.Text                             as Text
@@ -26,6 +28,8 @@ import qualified Text.ParserCombinators.Parsec.Rfc2822 as Rfc2822
 import qualified Network.IMAP as Impl
 
 type Connection = IMAPConnection
+
+type MessageId = Int
 
 type ImapM a = ReaderT Connection Script a
 
@@ -52,14 +56,26 @@ imapAction commandDescription imapCommand = do
 examine :: Text -> ImapM [FolderAttribute]
 examine folder = imapAction ("examine " <> folder) $ \conn -> Impl.examine conn folder
 
--- | Return message ids.
-searchUnseen :: ImapM [Int]
-searchUnseen = do
-    searchResult <- imapAction "search unseen" $ \conn -> Impl.search conn "UNSEEN"
+-- | Open a folder in read/write mode.
+select :: Text -> ImapM [FolderAttribute]
+select folder = imapAction ("select " <> folder) $ \conn -> Impl.select conn folder
+
+-- | Search messages.
+search :: Text -> ImapM [MessageId]
+search criteria = do
+    searchResult <- imapAction ("search " <> criteria) $ \conn -> Impl.search conn criteria
     case searchResult of
         []              -> pure []
         [Search msgids] -> pure msgids
         _               -> fail $ show searchResult
+
+-- | List all messages.
+searchAll :: ImapM [MessageId]
+searchAll = search "ALL"
+
+-- | List unseen (unread) messages.
+searchUnseen :: ImapM [MessageId]
+searchUnseen = search "UNSEEN"
 
 fetchHeaders :: Int -> ImapM [Rfc2822.Field]
 fetchHeaders msgid = do
@@ -68,12 +84,13 @@ fetchHeaders msgid = do
     properties <- case fetchResult of
         [Fetch properties]  -> pure properties
         _                   -> fail $ "IMAP fetchResult: " <> show fetchResult
-    body <- case properties of
-        [Body body] -> pure body
-        _           -> fail $ "IMAP fetched properties: " <> show properties
+    messageRaw <- case properties of
+        [MessageId _, Body message] -> pure message
+        _                           -> fail $ "IMAP fetched properties: " <> show properties
+    let message = messageRaw & BS.map (min 0x7F) & BSC.unpack
     Rfc2822.Message fields _body <-
-        case parse Rfc2822.message "message body" $ ByteString.unpack body of
-            Left err  -> fail $ "IMAP fetch: parse message: " <> show err
+        case parse Rfc2822.message "message" message of
+            Left err  -> fail $ "IMAP fetch: parse message:\n" <> show message <> "\n" <> show err
             Right msg -> pure msg
     pure fields
 
@@ -85,6 +102,7 @@ authenticateOAuth2 Credentials{user, accessToken} = do
         Impl.sendCommand conn $ "AUTHENTICATE XOAUTH2 " <> authRequestEncoded
     assert (isExpectedAuthResult authResult) $ "authentication problem: " <> show authResult
 
+-- | List folders (mailboxes).
 list :: ImapM [Folder]
 list = do
     listResult <- imapAction "list *" $ \conn -> Impl.list conn "*"
