@@ -3,8 +3,10 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module Tasknight.Util.IMAP
-    ( Connection, Credentials(..), Folder(..), ImapM, NameAttribute, UntaggedResult(..)
-    , authenticateOAuth2, examine, fetchHeaders, list, runImap, searchAll, searchUnseen, select
+    ( Connection, Credentials(..), Folder(..), ImapM, NameAttribute, SearchSpec(..)
+    , UntaggedResult(..)
+    , authenticateOAuth2, examine, fetchHeaders, list, runImap
+    , search, searchAll, searchUnseen, select
     ) where
 
 import           Control.Error                         (ExceptT(..), Script, fmapL)
@@ -17,7 +19,7 @@ import qualified Data.ByteString.Char8                 as BSC
 import           Data.Function                         ((&))
 import           Data.Monoid                           ((<>))
 import           Data.Text                             (Text)
-import qualified Data.Text                             as Text
+import qualified Data.Text.Extra                       as Text
 import           ListT                                 (ListT)
 import           Network.Connection                    (ConnectionParams(..))
 import           Network.IMAP.Types                    (CommandResult(..), IMAPConnection,
@@ -38,11 +40,13 @@ data Credentials = Credentials{user :: ByteString, accessToken :: ByteString}
 data Folder = Folder
     {folder_name :: Text, folder_specialName :: Maybe Text, folder_flags :: [NameAttribute]}
 
--- | TODO(cblp, 2016-05-03) Specialize
-type FolderAttribute = UntaggedResult
+data SearchSpec = SearchAll | SearchUnseen
+instance Show SearchSpec where
+    show SearchAll    = "ALL"
+    show SearchUnseen = "UNSEEN"
 
 -- | TODO(cblp, 2016-05-03) Specialize
--- type MessageHeader = UntaggedResult
+type FolderAttribute = UntaggedResult
 
 imapAction :: Text -> (Connection -> ListT IO CommandResult) -> ImapM [UntaggedResult]
 imapAction commandDescription imapCommand = do
@@ -61,21 +65,23 @@ select :: Text -> ImapM [FolderAttribute]
 select folder = imapAction ("select " <> folder) $ \conn -> Impl.select conn folder
 
 -- | Search messages.
-search :: Text -> ImapM [MessageId]
-search criteria = do
+search :: SearchSpec -> ImapM [MessageId]
+search searchSpec = do
     searchResult <- imapAction ("search " <> criteria) $ \conn -> Impl.search conn criteria
     case searchResult of
         []              -> pure []
         [Search msgids] -> pure msgids
         _               -> fail $ show searchResult
+  where
+    criteria = Text.show searchSpec
 
 -- | List all messages.
 searchAll :: ImapM [MessageId]
-searchAll = search "ALL"
+searchAll = search SearchAll
 
 -- | List unseen (unread) messages.
 searchUnseen :: ImapM [MessageId]
-searchUnseen = search "UNSEEN"
+searchUnseen = search SearchUnseen
 
 fetchHeaders :: Int -> ImapM [Rfc2822.Field]
 fetchHeaders msgid = do

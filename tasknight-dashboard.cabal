@@ -24,9 +24,11 @@ library
                       Tasknight.Providers.Feedly
                       Tasknight.Providers.Gmail
                       Tasknight.Providers.Twitter
-    other-modules:    Tasknight.Util.Email
+    other-modules:    Data.Text.Extra
+                      Tasknight.Util.Email
                       Tasknight.Util.IMAP
-    build-depends:    base >= 4.7 && < 5
+    build-depends:    attoparsec
+                    , base < 5
                     , base64-bytestring
                     , bytestring
                     , connection

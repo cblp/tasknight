@@ -8,14 +8,15 @@ import           Control.Monad.Trans.Class (lift)
 import qualified Data.ByteString.Char8     as ByteString
 import           Data.Foldable             (fold)
 import           Data.Monoid               ((<>))
-import qualified Data.Text                 as Text
+import           Data.Text                 (Text)
+import qualified Data.Text.Extra           as Text
 import           Data.Traversable          (for)
 import           Network.Connection        (ConnectionParams(..), TLSSettings(..))
 
 import           Tasknight.OAuth2     (OAuth2Provider(..), OAuth2Scope, TokenRequest(..))
 import           Tasknight.Provider   (Item(..), ItemList(..), Provider(..))
 import           Tasknight.Util.Email (subject)
-import           Tasknight.Util.IMAP  (Folder(..), ImapM)
+import           Tasknight.Util.IMAP  (Folder(..), ImapM, SearchSpec(..))
 import qualified Tasknight.Util.IMAP  as IMAP
 
 -- | Provider configuration
@@ -32,34 +33,31 @@ foldersList = ListSpec $ \folders -> do
             [ Item $ folder_name
                   <> maybe "" (" | " <>) folder_specialName
                   <> " | " <> Text.pack (show folder_flags)
-            | Folder{folder_name, folder_specialName, folder_flags} <- folders
-            ]
+            | Folder{folder_name, folder_specialName, folder_flags} <- folders ]
     pure [ItemList{name = "Folders", items = folderItems}]
+
+-- | Generic messages spec
+messagesListSpec :: [Text] -> SearchSpec -> ImapM [ItemList]
+messagesListSpec boxes searchSpec =
+    foldFor boxes $ \box -> do
+        _boxAttributes <- IMAP.examine box
+        msgids <- IMAP.search searchSpec
+        subjects <- for msgids $ \msgid ->
+            subject <$> IMAP.fetchHeaders msgid
+        pure [ ItemList { name = Text.unwords [Text.show searchSpec, "messages in", box]
+                        , items = fmap Item subjects } ]
 
 -- | Unread messages in inbox
 inboxUnread :: ListSpec
-inboxUnread = ListSpec $ \_folders -> do
-    let box = "INBOX"
-    _boxAttributes <- IMAP.examine box
-    msgids <- IMAP.searchUnseen
-    subjects <- for msgids $ \msgid ->
-        subject <$> IMAP.fetchHeaders msgid
-    pure [ ItemList { name = "Unread messages in " <> box
-                    , items = [Item . Text.pack $ show item | item <- subjects] } ]
+inboxUnread = ListSpec $ \_folders -> messagesListSpec ["INBOX"] SearchUnseen
 
 -- | Starred messages
 starred :: ListSpec
-starred = ListSpec $ \folders -> do
-    let starredBoxes =  [ folder_name
-                        | Folder{folder_name, folder_specialName} <- folders
-                        , folder_specialName == Just "Flagged" ]
-    foldFor starredBoxes $ \box -> do
-        _boxAttributes <- IMAP.examine box
-        msgids <- IMAP.searchAll
-        subjects <- for msgids $ \msgid ->
-            subject <$> IMAP.fetchHeaders msgid
-        pure [ ItemList { name = "Messages in " <> box
-                        , items = [Item . Text.pack $ show item | item <- subjects] } ]
+starred = ListSpec $ \folders -> let
+    starredBoxes =  [ folder_name
+                    | Folder{folder_name, folder_specialName} <- folders
+                    , folder_specialName == Just "Flagged" ]
+    in messagesListSpec starredBoxes SearchAll
 
 -- | Provider constructor
 gmail :: Gmail -> Provider
