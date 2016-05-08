@@ -41,6 +41,7 @@ library
                     , imap
                     , list-t
                     , mtl
+                    , network-uri
                     , parsec
                     , pretty-show
                     , text

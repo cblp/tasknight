@@ -12,6 +12,7 @@ import           Data.Text                 (Text)
 import qualified Data.Text.Extra           as Text
 import           Data.Traversable          (for)
 import           Network.Connection        (ConnectionParams(..), TLSSettings(..))
+import           Network.URI               (URI(..), URIAuth(..), nullURI)
 
 import           Tasknight.OAuth2     (OAuth2Provider(..), OAuth2Scope, TokenRequest(..))
 import           Tasknight.Provider   (Item(..), ItemList(..), Provider(..))
@@ -30,10 +31,12 @@ newtype ListSpec = ListSpec ([Folder] -> ImapM [ItemList])
 foldersList :: ListSpec
 foldersList = ListSpec $ \folders -> do
     let folderItems =
-            [ Item $ folder_name
-                  <> maybe "" (" | " <>) folder_specialName
-                  <> " | " <> Text.pack (show folder_flags)
-            | Folder{folder_name, folder_specialName, folder_flags} <- folders ]
+            [ Item{text, uri = messageUri}
+            | Folder{folder_name, folder_specialName, folder_flags} <- folders
+            , let text =  folder_name
+                          <> maybe "" (" | " <>) folder_specialName
+                          <> " | " <> Text.pack (show folder_flags)
+            ]
     pure [ItemList{name = "Folders", items = folderItems}]
 
 -- | Generic messages spec
@@ -45,7 +48,7 @@ messagesListSpec boxes searchSpec =
         subjects <- for msgids $ \msgid ->
             subject <$> IMAP.fetchHeaders msgid
         pure [ ItemList { name = Text.unwords [Text.show searchSpec, "messages in", box]
-                        , items = fmap Item subjects } ]
+                        , items = [Item{text = subj, uri = messageUri} | subj <- subjects] } ]
 
 -- | Unread messages in inbox
 inboxUnread :: ListSpec
@@ -97,3 +100,11 @@ gmailScopes = ["https://mail.google.com/"]
 
 foldFor :: (Traversable t, Applicative f, Monoid b) => t a -> (a -> f b) -> f b
 foldFor xs f = fold <$> traverse f xs
+
+messageUri :: URI
+messageUri = nullURI
+    { uriScheme = "https:"
+    , uriAuthority = Just URIAuth{uriUserInfo = "", uriRegName = "mail.google.com", uriPort = ""}
+    , uriPath = "/mail/u/0"
+    , uriFragment = "#inbox"
+    }
