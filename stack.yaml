@@ -1,7 +1,7 @@
 resolver: lts-5.10
 
 packages:
-  - .
+  - tasknight-dashboard
 
   # local extra-deps:
   - location: ../email-header
@@ -14,13 +14,16 @@ extra-deps:
 
   - google-oauth2-0.2.1  # for Tasknight.Provider.Gmail
 
+  # FIXME(cblp, 2016-05-09) temporarily local
   # - email-header-0.2.0  # for Tasknight.Util.IMAP
 
 # todo:
 #   try libs:
-#     - hoauth2
-#     - authenticate-oauth
-#     - HaskellNet (IMAP)
+#     OAuth2:
+#       - hoauth2
+#       - authenticate-oauth
+#     IMAP:
+#       - HaskellNet
 
 ghc-options:
   tasknight-dashboard: '-Werror'

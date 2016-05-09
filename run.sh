@@ -1,4 +1,4 @@
 #!/bin/bash
 set -eux -o pipefail
 
-stack exec --package=. tasknight-dashboard
+stack exec --package=tasknight-dashboard tasknight-dashboard

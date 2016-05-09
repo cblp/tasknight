@@ -2,5 +2,7 @@
 set -eux -o pipefail
 
 stack build
-stack exec --package=cabal-install -- cabal check
+(   cd tasknight-dashboard
+    stack exec --package=cabal-install -- cabal check
+)
 stack test
