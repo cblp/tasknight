@@ -59,7 +59,7 @@ buildStackCommand useDocker subcommand = ("stack", dockerOpts <> [subcommand])
     dockerOpts = if useDocker then ["--docker", "--docker-image=" <> dockerImage] else []
 
 logSubprocess :: [String] -> IO ()
-logSubprocess prog = putStrLn . unwords $ "+" : fmap show prog
+logSubprocess = putStrLn . unwords . ("+" :) . fmap show
 
 run :: (FilePath, [String]) -> IO ()
 run (prog, args) = do
@@ -68,9 +68,8 @@ run (prog, args) = do
 
 getDockerEnv :: IO [(String, String)]
 getDockerEnv = do
-    let dm = "docker-machine"
-        args = ["env", "--shell=cmd", "default"]
-    logSubprocess $ dm : args
+    let cmd@(dm : args) = ["docker-machine", "env", "--shell=cmd", "default"]
+    logSubprocess cmd
     parseEnv <$> readProcess dm args ""
 
 applyEnv :: [(String, String)] -> IO ()
