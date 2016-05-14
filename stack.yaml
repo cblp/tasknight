@@ -1,24 +1,29 @@
-resolver: lts-5.10
+resolver: lts-5.17
 
 packages:
   - tasknight-dashboard
+  - frontend
 
   # extra-deps:
   - location:
       git: https://github.com/knrafto/email-header
       commit: f9c131292b17c41d05ad8def53937e5baf178bc6
+      # 0.2.0 with my fixes
     extra-dep: true
-    # 0.2.0 with my fixes
 
 extra-deps:
-  - imap-0.2.0.3  # for Tasknight.Util.IMAP
-  - monadIO-0.10.1.4  # for imap
-  - rolling-queue-0.1  # for imap
+  - imap-0.2.0.3          # for Tasknight.Util.IMAP
+  - monadIO-0.10.1.4      # for imap
+  - rolling-queue-0.1     # for imap
 
-  - google-oauth2-0.2.1  # for Tasknight.Provider.Gmail
+  - google-oauth2-0.2.1   # for Tasknight.Provider.Gmail
 
   # FIXME(cblp, 2016-05-09) temporarily local
   # - email-header-0.2.0  # for Tasknight.Util.IMAP
+
+  - servant-0.6.1         # for tasknight-dashboard
+  - servant-blaze-0.6.1   # for servant
+  - servant-server-0.6.1  # for servant
 
 # todo:
 #   try libs:
@@ -29,4 +34,5 @@ extra-deps:
 #       - HaskellNet
 
 ghc-options:
-  tasknight-dashboard: '-Werror'
+  tasknight-dashboard:  -Werror
+  tasknight-frontend:   -Werror

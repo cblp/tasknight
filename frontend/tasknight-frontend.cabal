@@ -1,0 +1,32 @@
+name:           tasknight-frontend
+version:        0.1.0.0
+license:        BSD3
+license-file:   LICENSE
+author:         Yuriy Syrovetskiy
+maintainer:     cblp@cblp.su
+category:       Web
+build-type:     Simple
+cabal-version:  >= 1.10
+
+library
+    hs-source-dirs:   src
+    exposed-modules:  Tasknight.Frontend
+    default-language: Haskell2010
+    ghc-options:      -Wall -Werror
+    build-depends:    base
+                    , servant >= 0.6.1
+                      -- ^ in 0.6.1 they fixed BasicAuth
+                    , servant-blaze
+
+executable frontend
+    hs-source-dirs:   app
+    main-is:          Main.hs
+    default-language: Haskell2010
+    ghc-options:      -Wall -Werror
+
+    build-depends:    base
+                    , wai
+                    , warp
+                    , servant-server
+
+                    , tasknight-frontend
