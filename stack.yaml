@@ -3,9 +3,12 @@ resolver: lts-5.10
 packages:
   - tasknight-dashboard
 
-  # local extra-deps:
-  - location: ../email-header
+  # extra-deps:
+  - location:
+      git: https://github.com/knrafto/email-header
+      commit: f9c131292b17c41d05ad8def53937e5baf178bc6
     extra-dep: true
+    # 0.2.0 with my fixes
 
 extra-deps:
   - imap-0.2.0.3  # for Tasknight.Util.IMAP
