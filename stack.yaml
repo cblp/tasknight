@@ -32,7 +32,3 @@ extra-deps:
 #       - authenticate-oauth
 #     IMAP:
 #       - HaskellNet
-
-ghc-options:
-  tasknight-dashboard:  -Werror
-  tasknight-frontend:   -Werror

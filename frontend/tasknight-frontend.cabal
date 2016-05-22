@@ -16,7 +16,7 @@ library
                       Tasknight.Frontend.Root
                       Tasknight.Frontend.Types
     default-language: Haskell2010
-    ghc-options:      -Wall -Werror
+    ghc-options:      -Wall
     build-depends:    base
                     , servant >= 0.6.1
                       -- ^ in 0.6.1 they fixed BasicAuth
@@ -28,9 +28,23 @@ executable frontend
     hs-source-dirs:   app
     main-is:          Main.hs
     default-language: Haskell2010
-    ghc-options:      -Wall -Werror
+    ghc-options:      -Wall
 
     build-depends:    base
                     , warp
+
+                    , tasknight-frontend
+
+test-suite test
+    type:             exitcode-stdio-1.0
+    hs-source-dirs:   test
+    main-is:          Spec.hs
+    default-language: Haskell2010
+    ghc-options:      -Wall
+
+    build-depends:    base
+                    , wai-extra
+                    , tasty
+                    , tasty-hunit
 
                     , tasknight-frontend

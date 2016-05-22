@@ -1,6 +1,3 @@
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE TypeOperators #-}
-
 import Network.Wai.Handler.Warp (run)
 
 import Tasknight.Frontend (app)
