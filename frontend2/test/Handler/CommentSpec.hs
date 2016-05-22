@@ -1,11 +1,12 @@
 module Handler.CommentSpec (spec) where
 
+import Data.Aeson (Value, encode, object, (.=))
+
 import TestImport
-import Data.Aeson
 
 spec :: Spec
 spec = withApp $ do
-    describe "valid request" $ do
+    describe "valid request" $
         it "gives a 200" $ do
             get HomeR
             statusIs 200
@@ -19,14 +20,16 @@ spec = withApp $ do
                 setUrl CommentR
                 setRequestBody encoded
                 addRequestHeader ("Content-Type", "application/json")
-                addTokenFromCookie
-            
+                -- TODO(cblp, 2016-05-22) Commented out until
+                -- https://github.com/yesodweb/yesod/issues/1199
+                -- addTokenFromCookie
+
             statusIs 200
 
             [Entity _id comment] <- runDB $ selectList [CommentMessage ==. message] []
             assertEqual "Should have " comment (Comment message Nothing)
 
-    describe "invalid requests" $ do
+    describe "invalid requests" $
         it "400s when the JSON body is invalid" $ do
             get HomeR
 
@@ -36,6 +39,7 @@ spec = withApp $ do
                 setUrl CommentR
                 setRequestBody $ encode body
                 addRequestHeader ("Content-Type", "application/json")
-                addTokenFromCookie
+                -- TODO(cblp, 2016-05-22) Commented out until
+                -- https://github.com/yesodweb/yesod/issues/1199
+                -- addTokenFromCookie
             statusIs 400
-
