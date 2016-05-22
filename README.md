@@ -11,3 +11,7 @@ Your notification center.
 ### Test
 
     $ stack test --pedantic
+
+### Run
+
+    $ stack exec --package=tasknight-frontend tasknight-frontend
