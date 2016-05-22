@@ -16,4 +16,5 @@ Your notification center.
 
 ### Run
 
+    $ cd frontend2
     $ stack exec --package=tasknight-frontend tasknight-frontend
