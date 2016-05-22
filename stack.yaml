@@ -2,7 +2,7 @@ resolver: lts-5.17
 
 packages:
   - dashboard
-  - frontend
+  - frontend2
 
   # extra-deps:
   - location:
