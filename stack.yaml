@@ -17,6 +17,7 @@ extra-deps:
   - rolling-queue-0.1     # for imap
 
   - google-oauth2-0.2.1   # for Tasknight.Provider.Gmail
+  # TODO(cblp, 2016-06-25) make google-oauth2 support more recent aeson
 
   # FIXME(cblp, 2016-05-09) temporarily local
   # - email-header-0.2.0+cblp  # for Tasknight.Util.IMAP
