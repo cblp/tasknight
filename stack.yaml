@@ -26,10 +26,11 @@ extra-deps:
   - servant-blaze-0.6.1   # for servant
   - servant-server-0.6.1  # for servant
 
-# todo:
+# TODO:
 #   try libs:
 #     OAuth2:
 #       - hoauth2
 #       - authenticate-oauth
 #     IMAP:
-#       - HaskellNet
+#       HaskellNet:
+#         '+': stackage
