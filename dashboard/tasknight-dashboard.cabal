@@ -46,6 +46,7 @@ library
                     , parsec
                     , pretty-show
                     , text
+                    , time
                     , transformers
                     , xdg-basedir
                       -- ^ TODO(cblp, 2016-04-03) replace with System.Directory.getXdgDirectory
