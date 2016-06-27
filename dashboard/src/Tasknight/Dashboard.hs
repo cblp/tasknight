@@ -10,7 +10,8 @@ import qualified Data.ByteString.Lazy.Char8 as ByteString
 import           Data.Foldable              (for_)
 import           Data.Monoid                ((<>))
 import qualified Data.Text                  as Text
-import           Data.Time                  (UTCTime, getCurrentTime)
+import           Data.Time                  (TimeZone(..), ZonedTime, getCurrentTime,
+                                             utcToZonedTime)
 import           Data.Traversable           (for)
 import           Lucid                      (a_, body_, h1_, href_, html_, li_, ol_, p_, renderBS,
                                              toHtml)
@@ -21,10 +22,12 @@ import Tasknight.Provider         (Item(..), ItemList(..), Provider(..))
 mainWith :: Config -> IO ()
 mainWith Config{providers} = runScript $ do
     lists <- mconcat <$> for providers getLists
-    updateTime <- lift getCurrentTime
+    updateTime <- utcToZonedTime msk <$> lift getCurrentTime
     lift . ByteString.putStrLn $ showDashboard updateTime lists
+  where
+    msk = TimeZone{timeZoneMinutes=180, timeZoneSummerOnly=False, timeZoneName="MSK"}
 
-showDashboard :: UTCTime -> [ItemList] -> ByteString
+showDashboard :: ZonedTime -> [ItemList] -> ByteString
 showDashboard updateTime lists = renderBS . html_ . body_ $ do
     for_ lists $ \ItemList{name, items} -> do
         h1_ $ toHtml name
