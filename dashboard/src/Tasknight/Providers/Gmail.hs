@@ -31,7 +31,7 @@ newtype ListSpec = ListSpec ([Folder] -> ImapM [ItemList])
 foldersList :: ListSpec
 foldersList = ListSpec $ \folders -> do
     let folderItems =
-            [ Item{text, uri = messageUri}
+            [ Item{text, uri=gmailUri{uriFragment="#inbox"}}
             | Folder{folder_name, folder_specialName, folder_flags} <- folders
             , let text =  folder_name
                           <> maybe "" (" | " <>) folder_specialName
@@ -40,19 +40,21 @@ foldersList = ListSpec $ \folders -> do
     pure [ItemList{name = "Folders", items = folderItems}]
 
 -- | Generic messages spec
-messagesListSpec :: [Text] -> SearchSpec -> ImapM [ItemList]
-messagesListSpec boxes searchSpec =
+messagesListSpec :: [Text] -> String -> SearchSpec -> ImapM [ItemList]
+messagesListSpec boxes uriFragment searchSpec =
     foldFor boxes $ \box -> do
         _boxAttributes <- IMAP.examine box
         msgids <- IMAP.search searchSpec
         subjects <- for msgids $ \msgid ->
             subject <$> IMAP.fetchHeaders msgid
-        pure [ ItemList { name = Text.unwords [Text.show searchSpec, "messages in", box]
-                        , items = [Item{text = subj, uri = messageUri} | subj <- subjects] } ]
+        pure  [ ItemList  { name = Text.unwords [Text.show searchSpec, "messages in", box]
+                          , items = [Item{text=subj, uri=gmailUri{uriFragment}} | subj <- subjects]
+                          }
+              ]
 
 -- | Unread messages in inbox
 inboxUnread :: ListSpec
-inboxUnread = ListSpec $ \_folders -> messagesListSpec ["INBOX"] SearchUnseen
+inboxUnread = ListSpec $ \_folders -> messagesListSpec ["INBOX"] "#inbox" SearchUnseen
 
 -- | Starred messages
 starred :: ListSpec
@@ -60,7 +62,7 @@ starred = ListSpec $ \folders -> let
     starredBoxes =  [ folder_name
                     | Folder{folder_name, folder_specialName} <- folders
                     , folder_specialName == Just "Flagged" ]
-    in messagesListSpec starredBoxes SearchAll
+    in messagesListSpec starredBoxes "#starred" SearchAll
 
 -- | Provider constructor
 gmail :: Gmail -> Provider
@@ -101,10 +103,10 @@ gmailScopes = ["https://mail.google.com/"]
 foldFor :: (Traversable t, Applicative f, Monoid b) => t a -> (a -> f b) -> f b
 foldFor xs f = fold <$> traverse f xs
 
-messageUri :: URI
-messageUri = nullURI
+gmailUri :: URI
+gmailUri = nullURI
     { uriScheme = "https:"
     , uriAuthority = Just URIAuth{uriUserInfo = "", uriRegName = "mail.google.com", uriPort = ""}
     , uriPath = "/mail/u/0"
-    , uriFragment = "#inbox"
+    -- , uriFragment = "#inbox"
     }
