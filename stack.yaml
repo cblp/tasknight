@@ -4,6 +4,9 @@ packages:
   - dashboard
   - frontend
 
+  # to be extracted
+  - dropbox
+
   # extra-deps:
   - location:
       git: https://github.com/knrafto/email-header

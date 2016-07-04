@@ -1,0 +1,8 @@
+name:           dropbox
+version:        0.0.0.0
+cabal-version:  >= 1.2
+build-type:     Simple
+
+library
+    exposed-modules:  Dropbox
+    build-depends:    base
