@@ -37,8 +37,8 @@ library
                     , errors
                     , filepath
                     , google-oauth2
+                    , HaskellNet
                     , hsemail
-                    , imap
                     , list-t
                     , lucid
                     , mtl

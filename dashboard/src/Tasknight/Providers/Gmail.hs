@@ -17,7 +17,7 @@ import           Network.URI               (URI(..), URIAuth(..), nullURI)
 import           Tasknight.OAuth2     (OAuth2Provider(..), OAuth2Scope, TokenRequest(..))
 import           Tasknight.Provider   (Item(..), ItemList(..), Provider(..))
 import           Tasknight.Util.Email (subject)
-import           Tasknight.Util.IMAP  (Folder(..), ImapM, SearchSpec(..))
+import           Tasknight.Util.IMAP  (Flag(Seen), Folder(..), ImapM, SearchQuery(ALLs, UNFLAG))
 import qualified Tasknight.Util.IMAP  as IMAP
 
 -- | Provider configuration
@@ -32,15 +32,15 @@ foldersList :: ListSpec
 foldersList = ListSpec $ \folders -> do
     let folderItems =
             [ Item{text, uri=gmailUri{uriFragment="#inbox"}}
-            | Folder{folder_name, folder_specialName, folder_flags} <- folders
+            | Folder{folder_name, folder_attrs} <- folders
             , let text =  folder_name
-                          <> maybe "" (" | " <>) folder_specialName
-                          <> " | " <> Text.pack (show folder_flags)
+                          -- <> maybe "" (" | " <>) folder_specialName
+                          <> " | " <> Text.pack (show folder_attrs)
             ]
     pure [ItemList{name = "Folders", items = folderItems}]
 
 -- | Generic messages spec
-messagesListSpec :: [Text] -> String -> SearchSpec -> ImapM [ItemList]
+messagesListSpec :: [Text] -> String -> SearchQuery -> ImapM [ItemList]
 messagesListSpec boxes uriFragment searchSpec =
     foldFor boxes $ \box -> do
         _boxAttributes <- IMAP.examine box
@@ -54,7 +54,7 @@ messagesListSpec boxes uriFragment searchSpec =
 
 -- | Unread messages in inbox
 inboxUnread :: ListSpec
-inboxUnread = ListSpec $ \_folders -> messagesListSpec ["INBOX"] "#inbox" SearchUnseen
+inboxUnread = ListSpec $ \_folders -> messagesListSpec ["INBOX"] "#inbox" (UNFLAG Seen)
 
 -- | Starred messages
 starred :: ListSpec
@@ -62,7 +62,7 @@ starred = ListSpec $ \folders -> let
     starredBoxes =  [ folder_name
                     | Folder{folder_name, folder_specialName} <- folders
                     , folder_specialName == Just "Flagged" ]
-    in messagesListSpec starredBoxes "#starred" SearchAll
+    in messagesListSpec starredBoxes "#starred" ALLs
 
 -- | Provider constructor
 gmail :: Gmail -> Provider
