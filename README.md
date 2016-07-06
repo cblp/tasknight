@@ -1,4 +1,6 @@
-# Tasknight
+[![Build Status](https://travis-ci.org/cblp/tasknight.svg?branch=master)](https://travis-ci.org/cblp/tasknight)
+
+# Tasknight 
 
 Your notification center.
 
