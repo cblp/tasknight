@@ -13,17 +13,19 @@ import qualified Data.Text                  as Text
 import           Data.Time                  (TimeZone(..), ZonedTime, getCurrentTime,
                                              utcToZonedTime)
 import           Data.Traversable           (for)
+import           Dropbox                    (withDropbox, writeFile)
 import           Lucid                      (a_, body_, h1_, href_, html_, li_, ol_, p_, renderBS,
                                              toHtml)
+import           Prelude                    hiding (writeFile)
 
-import Tasknight.Dashboard.Config (Config(..))
+import Tasknight.Dashboard.Config (Config(..), ResultDest(..))
 import Tasknight.Provider         (Item(..), ItemList(..), Provider(..))
 
 mainWith :: Config -> IO ()
-mainWith Config{providers} = runScript $ do
+mainWith Config{providers, resultDest} = runScript $ do
     lists <- mconcat <$> for providers getLists
     updateTime <- utcToZonedTime msk <$> lift getCurrentTime
-    lift . ByteString.putStrLn $ showDashboard updateTime lists
+    lift . putResult resultDest $ showDashboard updateTime lists
   where
     msk = TimeZone{timeZoneMinutes=180, timeZoneSummerOnly=False, timeZoneName="MSK"}
 
@@ -37,3 +39,7 @@ showDashboard updateTime lists = renderBS . html_ . body_ $ do
     p_ . toHtml $ "Updated at " <> show updateTime
   where
     toText = Text.pack . show
+
+putResult :: ResultDest -> ByteString -> IO ()
+putResult Stdout = ByteString.putStrLn
+putResult (Dropbox dbConfig) = withDropbox dbConfig . writeFile "/next.html"

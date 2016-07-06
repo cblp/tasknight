@@ -6,3 +6,8 @@ build-type:     Simple
 library
     exposed-modules:  Dropbox
     build-depends:    base
+                    , bytestring
+                    , errors
+                    , http-conduit
+                    , mtl
+                    , transformers

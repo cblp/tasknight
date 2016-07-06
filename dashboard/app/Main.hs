@@ -6,7 +6,7 @@ module Main (main) where
 import qualified Dropbox
 
 import           Tasknight.Dashboard        (mainWith)
-import           Tasknight.Dashboard.Config (Config(..), PutResultTo(..), emptyConfig)
+import           Tasknight.Dashboard.Config (Config(..), ResultDest(..))
 import           Tasknight.OAuth2           (defaultOAuth2Provider)
 import           Tasknight.Providers.Gmail  (Gmail(..), gmail)
 import qualified Tasknight.Providers.Gmail  as Gmail
@@ -18,7 +18,7 @@ main :: IO ()
 main = mainWith config
   where
     appName = "tasknight"
-    config = emptyConfig{providers, putResultTo=dropbox}
+    config = Config{providers, resultDest=dropbox}
     providers =
         [ gmail Gmail
               { gmail_lists = [ Gmail.inboxUnread

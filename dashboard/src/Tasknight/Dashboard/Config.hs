@@ -1,12 +1,13 @@
-module Tasknight.Dashboard.Config (Config(..), PutResultTo(..), emptyConfig) where
+module Tasknight.Dashboard.Config (Config(..), ResultDest(..), emptyConfig) where
 
 import qualified Dropbox
 
 import Tasknight.Provider (Provider)
 
-data PutResultTo = Stdout | Dropbox Dropbox.Config
+-- | Result destination.
+data ResultDest = Stdout | Dropbox Dropbox.Config
 
-data Config = Config { providers :: [Provider], putResultTo :: PutResultTo }
+data Config = Config { providers :: [Provider], resultDest :: ResultDest }
 
 emptyConfig :: Config
-emptyConfig = Config { providers = [], putResultTo = Stdout }
+emptyConfig = Config{providers=[], resultDest=Stdout}

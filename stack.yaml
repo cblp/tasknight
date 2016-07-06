@@ -4,7 +4,7 @@ packages:
   - dashboard
   - frontend
 
-  # to be extracted
+  # TODO(cblp, 2016-07-04) extract
   - dropbox
 
   # extra-deps:
