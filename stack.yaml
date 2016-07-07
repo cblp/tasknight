@@ -2,7 +2,7 @@ resolver: lts-5.17
 
 packages:
   - dashboard
-  - frontend2
+  - frontend
 
   # extra-deps:
   - location:
@@ -21,10 +21,6 @@ extra-deps:
 
   # FIXME(cblp, 2016-05-09) temporarily local
   # - email-header-0.2.0+cblp  # for Tasknight.Util.IMAP
-
-  - servant-0.6.1         # for tasknight-frontend:Tasknight.Frontend
-  - servant-blaze-0.6.1   # for servant
-  - servant-server-0.6.1  # for servant
 
 # TODO:
 #   try libs:
