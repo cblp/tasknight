@@ -5,6 +5,7 @@ RUN   apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys 57515968
   &&  echo 'deb http://download.fpcomplete.com/ubuntu xenial main'                        \
       > /etc/apt/sources.list.d/fpco.list                                                 \
   &&  apt-get update                                                                      \
-  &&  apt-get install -y libicu-dev libpq-dev moreutils stack sudo                        \
+  &&  apt-get install -y libicu-dev libpq-dev moreutils postgresql stack sudo             \
   &&  adduser --uid=1000 user
+ENTRYPOINT ["docker/entry_point"]
 # EXPOSE 80
