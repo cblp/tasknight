@@ -105,7 +105,7 @@ test-suite test
                        Handler.HomeSpec
                        TestImport
     hs-source-dirs:    test
-    ghc-options:       -Wall
+    ghc-options:       -Wall -Werror
 
     extensions: TemplateHaskell
                 QuasiQuotes

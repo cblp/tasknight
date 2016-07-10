@@ -2,10 +2,9 @@
 -- stack runhaskell --package=optparse-applicative
 {-# OPTIONS -Wall -Werror #-}
 {-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE ViewPatterns #-}
 
 import Control.Arrow       (second)
-import Control.Monad       (void, when)
+import Control.Monad       (when)
 import Data.Foldable       (traverse_)
 import Data.List           (stripPrefix)
 import Data.Maybe          (mapMaybe)
@@ -14,8 +13,7 @@ import Options.Applicative (ParserInfo, execParser, fullDesc, header, help, help
                             short, switch)
 import System.Environment  (setEnv)
 import System.Info         (os)
-import System.Process      (CmdSpec(..), CreateProcess(cmdspec), proc, readCreateProcess,
-                            showCommandForUser)
+import System.Process      (callProcess, readProcess, showCommandForUser)
 
 dockerfileDir :: FilePath
 dockerfileDir = "docker"
@@ -42,7 +40,7 @@ main = do
     -- setup environment
     when options_docker $ do
         case os of
-            "darwin"  -> getDockerEnv >>= applyEnv
+            "darwin"  -> applyDockerMachineEnv
             "linux"   -> pure ()  -- Docker must be installed
             _         -> error $ "unsupported OS " <> os
         run $ dockerBuild dockerImage dockerfileDir
@@ -58,40 +56,37 @@ main = do
     when options_test .
         run $ stack "test"
 
-stackCommand :: Maybe FilePath -> String -> CreateProcess
+stackCommand :: Maybe FilePath -> String -> Command
 stackCommand mDockerImage subcommand = let
     dockerOpts = case mDockerImage of
         Nothing         -> []
         Just imageName  -> ["--docker", "--docker-image=" <> imageName]
     in
-    proc "stack" $ dockerOpts <> [subcommand]
+    Command "stack" $ dockerOpts <> [subcommand]
 
-logSubprocess :: CreateProcess -> IO ()
-logSubprocess = putStrLn . ("+ " <>) . showProc . cmdspec
+logSubprocess :: Command -> IO ()
+logSubprocess = putStrLn . ("+ " <>) . showProc
   where
-    showProc (ShellCommand cmd)     = cmd
-    showProc (RawCommand prog args) = showCommandForUser prog args
+    showProc (Command prog args) = showCommandForUser prog args
 
-run :: CreateProcess -> IO ()
-run cp = do
-    logSubprocess cp
-    void $ readCreateProcess cp ""
-
-getDockerEnv :: IO [(String, String)]
-getDockerEnv = do
-    let cmd = proc "docker-machine" ["env", "--shell=cmd", "default"]
+run :: Command -> IO ()
+run cmd@(Command prog args) = do
     logSubprocess cmd
-    parseEnv <$> readCreateProcess cmd ""
+    callProcess prog args
 
-applyEnv :: [(String, String)] -> IO ()
-applyEnv = traverse_ $ uncurry setEnv
-
-parseEnv :: String -> [(String, String)]
-parseEnv = mapMaybe parseEnvLine1 . lines
+applyDockerMachineEnv :: IO ()
+applyDockerMachineEnv = getDockerEnv >>= applyEnv
   where
-    parseEnvLine1 (stripPrefix "SET " -> Just line2)  = parseEnvLine2 line2
-    parseEnvLine1 _                                   = Nothing
-    parseEnvLine2 = Just . second tail . break ('=' ==)
+    getDockerEnv = do
+        let prog = "docker-machine"
+            args = ["env", "--shell=cmd", "default"]
+        logSubprocess $ Command prog args
+        parseEnv <$> readProcess prog args ""
+    parseEnv = mapMaybe (fmap (second tail . break ('=' ==)) . stripPrefix "SET ") . lines
+    applyEnv = traverse_ $ uncurry setEnv
 
-dockerBuild :: String -> FilePath -> CreateProcess
-dockerBuild imageName imageDir = proc "docker" ["build", "--tag=" <> imageName, imageDir]
+dockerBuild :: String -> FilePath -> Command
+dockerBuild imageName imageDir = Command "docker" ["build", "--tag=" <> imageName, imageDir]
+
+-- | like RawCommand
+data Command = Command FilePath [String]
