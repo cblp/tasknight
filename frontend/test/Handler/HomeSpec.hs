@@ -1,3 +1,5 @@
+{-# LANGUAGE ScopedTypeVariables #-}
+
 module Handler.HomeSpec (spec) where
 
 import TestImport
@@ -15,5 +17,5 @@ spec = withApp $ do
     it "leaves the user table empty" $ do
         get HomeR
         statusIs 200
-        users <- runDB $ selectList ([] :: [Filter User]) []
+        users :: [Entity User] <- runDB $ selectList [] []
         assertEqual "user table empty" 0 $ length users
