@@ -34,7 +34,6 @@ import System.Log.FastLogger                (defaultBufSize, newStdoutLoggerSet,
 -- Don't forget to add new modules to your cabal file!
 import Handler.Common
 import Handler.Home
-import Handler.Comment
 
 -- This line actually creates our YesodDispatch instance. It is the second half
 -- of the call to mkYesodData which occurs in Foundation.hs. Please see the
@@ -116,13 +115,18 @@ warpSettings foundation =
             (toLogStr $ "Exception from Warp: " ++ show e))
       defaultSettings
 
--- | For yesod devel, return the Warp settings and WAI Application.
-getApplicationDev :: IO (Settings, Application)
-getApplicationDev = do
+getApplication' :: IO (Settings, App, Application)
+getApplication' = do
     settings <- getAppSettings
     foundation <- makeFoundation settings
     wsettings <- getDevSettings $ warpSettings foundation
     app <- makeApplication foundation
+    pure (wsettings, foundation, app)
+
+-- | For yesod devel, return the Warp settings and WAI Application.
+getApplicationDev :: IO (Settings, Application)
+getApplicationDev = do
+    (wsettings, _, app) <- getApplication'
     return (wsettings, app)
 
 getAppSettings :: IO AppSettings
@@ -158,11 +162,8 @@ appMain = do
 --------------------------------------------------------------
 getApplicationRepl :: IO (Int, App, Application)
 getApplicationRepl = do
-    settings <- getAppSettings
-    foundation <- makeFoundation settings
-    wsettings <- getDevSettings $ warpSettings foundation
-    app1 <- makeApplication foundation
-    return (getPort wsettings, foundation, app1)
+    (wsettings, foundation, app) <- getApplication'
+    return (getPort wsettings, foundation, app)
 
 shutdownApp :: App -> IO ()
 shutdownApp _ = return ()

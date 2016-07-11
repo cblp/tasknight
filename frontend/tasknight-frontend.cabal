@@ -15,14 +15,13 @@ library
     hs-source-dirs: ., app
     exposed-modules: Application
                      Foundation
+                     Handler.Common
+                     Handler.Home
                      Import
                      Import.NoFoundation
                      Model
                      Settings
                      Settings.StaticFiles
-                     Handler.Common
-                     Handler.Home
-                     Handler.Comment
 
     if flag(dev) || flag(library-only)
         cpp-options:   -DDEVELOPMENT
@@ -100,8 +99,7 @@ executable tasknight-frontend
 test-suite test
     type:              exitcode-stdio-1.0
     main-is:           Spec.hs
-    other-modules:     Handler.CommentSpec
-                       Handler.CommonSpec
+    other-modules:     Handler.CommonSpec
                        Handler.HomeSpec
                        TestImport
     hs-source-dirs:    test

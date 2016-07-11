@@ -46,9 +46,7 @@ instance Yesod App where
     -- Controls the base of generated URLs. For more information on modifying,
     -- see: https://github.com/yesodweb/yesod/wiki/Overriding-approot
     approot = ApprootRequest $ \app req ->
-        case appRoot $ appSettings app of
-            Nothing -> getApprootText guessApproot app req
-            Just root -> root
+        fromMaybe (getApprootText guessApproot app req) . appRoot $ appSettings app
 
     -- Store session data on the client in encrypted cookies,
     -- default session idle timeout is 120 minutes
@@ -137,12 +135,13 @@ instance YesodAuth App where
     redirectToReferer _ = True
 
     authenticate creds = runDB $ do
-        x <- getBy $ UniqueUser $ credsIdent creds
+        let email = credsIdent creds
+        x <- get $ UserKey email
         case x of
-            Just (Entity uid _) -> return $ Authenticated uid
+            Just _  -> pure . Authenticated $ UserKey email
             Nothing -> Authenticated <$> insert User
-                { userIdent = credsIdent creds
-                , userPassword = Nothing
+                { userEmail = email
+                , userPasswordHash = Nothing
                 }
 
     -- You can add other plugins like Google Email, email or OAuth here
