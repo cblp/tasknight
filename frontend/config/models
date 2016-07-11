@@ -2,6 +2,10 @@ User
         email           Text
         passwordHash    Text Maybe
 
+        -- verification
+        verKey          Text Maybe
+        verified        Bool
+
         Primary         email
 
         deriving Typeable

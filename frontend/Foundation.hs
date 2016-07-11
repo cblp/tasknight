@@ -1,15 +1,22 @@
+{-# LANGUAGE NamedFieldPuns #-}
+
 module Foundation where
 
+import qualified Data.CaseInsensitive          as CI
+import qualified Data.Text.Encoding            as TE
+import           Database.Persist.Sql          (ConnectionPool, runSqlPool)
+import           Network.Mail.Mime             (Address(..), Encoding(None), Mail(..), Part(..),
+                                                emptyMail, renderSendMail)
+import           Text.Blaze.Html.Renderer.Utf8 (renderHtml)
+import           Text.Hamlet                   (hamletFile)
+import           Text.Jasmine                  (minifym)
+import           Text.Shakespeare.Text         (stext)
+import           Yesod.Auth.Email              (EmailCreds(..), YesodAuthEmail(..), authEmail)
+import           Yesod.Core.Types              (Logger)
+import qualified Yesod.Core.Unsafe             as Unsafe
+import           Yesod.Default.Util            (addStaticContentExternal)
+
 import Import.NoFoundation
-import Database.Persist.Sql (ConnectionPool, runSqlPool)
-import Text.Hamlet          (hamletFile)
-import Text.Jasmine         (minifym)
-import Yesod.Auth.OpenId    (authOpenId, IdentifierType (Claimed))
-import Yesod.Default.Util   (addStaticContentExternal)
-import Yesod.Core.Types     (Logger)
-import qualified Yesod.Core.Unsafe as Unsafe
-import qualified Data.CaseInsensitive as CI
-import qualified Data.Text.Encoding as TE
 
 -- | The foundation datatype for your application. This can be a good place to
 -- keep settings and values requiring initialization before your application
@@ -140,14 +147,105 @@ instance YesodAuth App where
         case x of
             Just _  -> pure . Authenticated $ UserKey email
             Nothing -> Authenticated <$> insert User
-                { userEmail = email
-                , userPasswordHash = Nothing
+                { userEmail         = email
+                , userPasswordHash  = Nothing
+                , userVerKey        = Nothing
+                , userVerified      = False
                 }
 
     -- You can add other plugins like Google Email, email or OAuth here
-    authPlugins _ = [authOpenId Claimed []]
+    authPlugins _ = [authEmail]
 
     authHttpManager = getHttpManager
+
+
+-- | Email auth&auth implementation
+instance YesodAuthEmail App where
+    type AuthEmailId App = UserId
+
+    afterPasswordRoute _ = HomeR
+
+    addUnverified email verkey =
+        runDB $ insert User { userEmail = email
+                            , userPasswordHash = Nothing
+                            , userVerKey = Just verkey
+                            , userVerified = False
+                            }
+
+    sendVerifyEmail email _ verurl = do
+        -- Print out to the console the verification email, for easier
+        -- debugging.
+        liftIO . putStrLn $ "Copy-paste this URL in your browser:" ++ verurl
+
+        -- Send email.
+        liftIO $ renderSendMail (emptyMail $ Address Nothing "noreply")
+            { mailTo = [Address Nothing email]
+            , mailHeaders = [("Subject", "Verify your email address")]
+            , mailParts = [[textPart, htmlPart]]
+            }
+      where
+        textPart = Part
+            { partType = "text/plain; charset=utf-8"
+            , partEncoding = None
+            , partFilename = Nothing
+            , partContent = encodeUtf8
+                [stext|
+                    Please confirm your email address by clicking on the link below.
+
+                    #{verurl}
+
+                    Thank you
+                |]
+            , partHeaders = []
+            }
+        htmlPart = Part
+            { partType = "text/html; charset=utf-8"
+            , partEncoding = None
+            , partFilename = Nothing
+            , partContent = renderHtml
+                [shamlet|
+                    <p>Please confirm your email address by clicking on the link below.
+                    <p>
+                        <a href=#{verurl}>#{verurl}
+                    <p>Thank you
+                |]
+            , partHeaders = []
+            }
+
+    getVerifyKey = runDB . fmap {-DB-} (userVerKey =<< {-Maybe-}) . get
+
+    setVerifyKey email key = runDB $ update email [UserVerKey =. Just key]
+
+    verifyAccount email = runDB $ do
+        mu <- get email
+        case mu of
+            Nothing ->
+                -- TODO(cblp, 2016-07-11) looks like attack, should be logged at least
+                return Nothing
+            Just _ -> do
+                update email [UserVerified =. True]
+                return $ Just email
+
+    getPassword = runDB . fmap {-DB-} (userPasswordHash =<< {-Maybe-}) . get
+
+    setPassword email saltedpass = runDB $ update email [UserPasswordHash =. Just saltedpass]
+
+    getEmailCreds email = runDB $ do
+        let uid = UserKey email
+        mu <- get uid
+        case mu of
+            Nothing -> return Nothing
+            Just User{userPasswordHash, userVerKey} -> return $ Just EmailCreds
+                { emailCredsId = uid
+                , emailCredsAuthId = Just uid
+                , emailCredsStatus = isJust $ userPasswordHash
+                , emailCredsVerkey = userVerKey
+                , emailCredsEmail = email
+                }
+
+    -- TODO(cblp, 2016-07-11) is it OK not to check database?
+    getEmail = pure . Just . unUserKey
+
 
 instance YesodAuthPersist App
 
