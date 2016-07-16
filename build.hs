@@ -21,21 +21,36 @@ dockerfileDir = "docker"
 dockerImage :: String
 dockerImage = "cblp/tasknight-build"
 
-data Options = Options{options_docker :: Bool, options_setup :: Bool, options_test :: Bool}
+data Options = Options
+    { options_docker            :: Bool
+    , options_setupStack        :: Bool
+    , options_test              :: Bool
+    , options_setupTestDatabase :: Bool
+    }
     deriving Show
 
 program :: ParserInfo Options
 program = info (helper <*> options) $ fullDesc <> header "build helper"
   where
     options = Options
-        <$> switch (short 'd' <> long "docker" <> help "use Docker")
-        <*> switch (short 's' <> long "setup" <> help "run `stack setup`")
-        <*> switch (short 't' <> long "test" <> help "run tests")
+        <$> switch (short 'd' <> long "docker"    <> help "use Docker")
+        <*> switch (short 's' <> long "setup"     <> help "run `stack setup`")
+        <*> switch (short 't' <> long "test"      <> help "run tests")
+        <*> switch (short 'b' <> long "setup-db"  <> help "setup test database")
 
 main :: IO ()
 main = do
-    Options{options_docker, options_setup, options_test} <- execParser program
-    let stack = stackCommand (if options_docker then Just dockerImage else Nothing)
+    Options{options_docker, options_setupStack, options_test, options_setupTestDatabase} <-
+        execParser program
+    let dockerParams dp_startServices =
+            if options_docker
+                then Just DockerParams{dp_imageName=dockerImage, dp_startServices}
+                else Nothing
+        defaultDockerParams       = dockerParams False
+        dockerParamsWithServices  = dockerParams True
+        stack                     = stackCommand defaultDockerParams
+        stackTestWithServices     = stackCommand dockerParamsWithServices ["test"]
+        stackExecWithServices cmd = stackCommand dockerParamsWithServices ["exec", "--", cmd]
 
     -- setup environment
     when options_docker $ do
@@ -46,23 +61,34 @@ main = do
         run $ dockerBuild dockerImage dockerfileDir
 
     -- install GHC
-    when options_setup .
-        run $ stack "setup"
+    when options_setupStack .
+        run $ stack ["setup"]
 
     -- build project
-    run $ stack "build"
+    run $ stack ["build"]
+
+    -- setup database
+    when options_setupTestDatabase .
+        run $ stackExecWithServices "./db-devel-init.sh"
 
     -- run tests
-    when options_test .
-        run $ stack "test"
+    when options_test $
+        run stackTestWithServices
 
-stackCommand :: Maybe FilePath -> String -> Command
-stackCommand mDockerImage subcommand = let
-    dockerOpts = case mDockerImage of
-        Nothing         -> []
-        Just imageName  -> ["--docker", "--docker-image=" <> imageName]
+data DockerParams = DockerParams{dp_imageName :: String, dp_startServices :: Bool}
+
+stackCommand :: Maybe DockerParams -> [String] -> Command
+stackCommand mDockerParams subcommand = let
+    dockerOpts = case mDockerParams of
+        Just DockerParams{dp_imageName, dp_startServices} ->
+            [ "--docker"
+            , "--docker-image=" <> dp_imageName
+            , "--docker-env=tasknight_docker_startServices="
+              <> if dp_startServices then "1" else "0"
+            ]
+        Nothing -> []
     in
-    Command "stack" $ dockerOpts <> [subcommand]
+    Command "stack" $ dockerOpts <> subcommand
 
 logSubprocess :: Command -> IO ()
 logSubprocess = putStrLn . ("+ " <>) . showProc

@@ -1,4 +1,10 @@
 #!/bin/bash
 set -eux -o pipefail
-service postgresql start
+
+# Docker entry point
+
+if [ $tasknight_docker_startServices == 1 ]; then
+    service postgresql start
+fi
+
 "$@"
