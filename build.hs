@@ -1,5 +1,5 @@
 #!/usr/bin/env stack
--- stack runhaskell --package=lens --package=optparse-applicative
+-- stack runhaskell --package=directory-1.2.3.0 --package=lens --package=optparse-applicative
 {-# OPTIONS -Wall -Werror #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -16,6 +16,7 @@ import Data.Monoid         ((<>))
 import Data.String         (IsString(..))
 import Options.Applicative (ParserInfo, execParser, fullDesc, header, help, helper, info, long,
                             short, switch)
+import System.Directory    (withCurrentDirectory)
 import System.Environment  (setEnv)
 import System.Info         (os)
 import System.Process      (callProcess, readProcess, showCommandForUser)
@@ -50,7 +51,10 @@ data Command = Command FilePath [String]
 instance IsString Command where
     fromString prog = Command prog []
 
-data StackCommand = SBuild | SExec Command | SSetup | STest
+data StackCommand = SBuild
+                  | SExec{additionalPackages :: [String], subCommand :: Command}
+                  | SSetup
+                  | STest
 
 data DockerParams = DockerParams{_imageName :: String, _startServices :: Bool}
 makeLenses ''DockerParams
@@ -73,10 +77,14 @@ stack paramsState cmd = let
             ]
         Nothing -> []
     stackCommand = case cmd of
-        SBuild                    -> ["build"]
-        SExec (Command prog args) -> "exec" : "--" : prog : args
-        SSetup                    -> ["setup"]
-        STest                     -> ["test"]
+        SBuild ->
+            ["build"]
+        SExec{additionalPackages, subCommand = Command prog args} ->
+            "exec" : ["--package=" <> p | p <- additionalPackages] <> ("--" : prog : args)
+        SSetup ->
+            ["setup"]
+        STest ->
+            ["test"]
     in
     Command "stack" $ dockerOpts <> stackCommand
 
@@ -134,14 +142,15 @@ main = do
 
     -- setup database
     when options_setupTestDatabase .
-        run . stack withServices $ SExec "./db-devel-init.sh"
+        run . stack withServices $ SExec [] "./db-devel-init.sh"
 
     -- run tests
     when options_test .
         run $ stack withServices STest
 
     when options_yesodDevel .
-        run . stack withServices . SExec $ Command "yesod" ["devel"]
+        withCurrentDirectory "frontend" .
+            run . stack withServices . SExec ["yesod-bin", "cabal-install"] $ Command "yesod" ["devel"]
 
 -- | No operation, or no option.
 noop :: Applicative f => f ()
