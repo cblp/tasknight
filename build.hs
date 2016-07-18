@@ -26,6 +26,7 @@ data Options = Options
     , options_setupStack        :: Bool
     , options_test              :: Bool
     , options_setupTestDatabase :: Bool
+    , options_yesodDevel        :: Bool
     }
     deriving Show
 
@@ -33,15 +34,22 @@ program :: ParserInfo Options
 program = info (helper <*> options) $ fullDesc <> header "build helper"
   where
     options = Options
-        <$> switch (short 'd' <> long "docker"    <> help "use Docker")
-        <*> switch (short 's' <> long "setup"     <> help "run `stack setup`")
-        <*> switch (short 't' <> long "test"      <> help "run tests")
-        <*> switch (short 'b' <> long "setup-db"  <> help "setup test database")
+        <$> switch (short 'd' <> long "docker"      <> help "use Docker")
+        <*> switch (short 's' <> long "setup"       <> help "run `stack setup`")
+        <*> switch (short 't' <> long "test"        <> help "run tests")
+        <*> switch (short 'b' <> long "setup-db"    <> help "setup test database")
+        <*> switch (short 'y' <> long "yesod-devel" <> help "run `yesod devel`")
 
 main :: IO ()
 main = do
-    Options{options_docker, options_setupStack, options_test, options_setupTestDatabase} <-
-        execParser program
+    Options
+        { options_docker
+        , options_setupStack
+        , options_test
+        , options_setupTestDatabase
+        , options_yesodDevel
+        } <-
+            execParser program
     let dockerParams dp_startServices =
             if options_docker
                 then Just DockerParams{dp_imageName=dockerImage, dp_startServices}
@@ -50,7 +58,7 @@ main = do
         dockerParamsWithServices  = dockerParams True
         stack                     = stackCommand defaultDockerParams
         stackTestWithServices     = stackCommand dockerParamsWithServices ["test"]
-        stackExecWithServices cmd = stackCommand dockerParamsWithServices ["exec", "--", cmd]
+        stackExecWithServices cmd = stackCommand dockerParamsWithServices $ ["exec", "--"] <> cmd
 
     -- setup environment
     when options_docker $ do
@@ -69,11 +77,14 @@ main = do
 
     -- setup database
     when options_setupTestDatabase .
-        run $ stackExecWithServices "./db-devel-init.sh"
+        run $ stackExecWithServices ["./db-devel-init.sh"]
 
     -- run tests
     when options_test $
         run stackTestWithServices
+
+    when options_yesodDevel .
+        run $ stackExecWithServices ["yesod", "devel"]
 
 data DockerParams = DockerParams{dp_imageName :: String, dp_startServices :: Bool}
 
