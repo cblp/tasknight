@@ -1,14 +1,19 @@
 #!/usr/bin/env stack
--- stack runhaskell --package=optparse-applicative
+-- stack runhaskell --package=lens --package=optparse-applicative
 {-# OPTIONS -Wall -Werror #-}
 {-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 import Control.Arrow       (second)
+import Control.Lens        (makeLenses, (.=), (^.), _Just)
 import Control.Monad       (when)
+import Control.Monad.State (State, execState)
 import Data.Foldable       (traverse_)
 import Data.List           (stripPrefix)
 import Data.Maybe          (mapMaybe)
 import Data.Monoid         ((<>))
+import Data.String         (IsString(..))
 import Options.Applicative (ParserInfo, execParser, fullDesc, header, help, helper, info, long,
                             short, switch)
 import System.Environment  (setEnv)
@@ -40,66 +45,40 @@ program = info (helper <*> options) $ fullDesc <> header "build helper"
         <*> switch (short 'b' <> long "setup-db"    <> help "setup test database")
         <*> switch (short 'y' <> long "yesod-devel" <> help "run `yesod devel`")
 
-main :: IO ()
-main = do
-    Options
-        { options_docker
-        , options_setupStack
-        , options_test
-        , options_setupTestDatabase
-        , options_yesodDevel
-        } <-
-            execParser program
-    let dockerParams dp_startServices =
-            if options_docker
-                then Just DockerParams{dp_imageName=dockerImage, dp_startServices}
-                else Nothing
-        defaultDockerParams       = dockerParams False
-        dockerParamsWithServices  = dockerParams True
-        stack                     = stackCommand defaultDockerParams
-        stackTestWithServices     = stackCommand dockerParamsWithServices ["test"]
-        stackExecWithServices cmd = stackCommand dockerParamsWithServices $ ["exec", "--"] <> cmd
+-- | like RawCommand
+data Command = Command FilePath [String]
+instance IsString Command where
+    fromString prog = Command prog []
 
-    -- setup environment
-    when options_docker $ do
-        case os of
-            "darwin"  -> applyDockerMachineEnv
-            "linux"   -> pure ()  -- Docker must be installed
-            _         -> error $ "unsupported OS " <> os
-        run $ dockerBuild dockerImage dockerfileDir
+data StackCommand = SBuild | SExec Command | SSetup | STest
 
-    -- install GHC
-    when options_setupStack .
-        run $ stack ["setup"]
+data DockerParams = DockerParams{_imageName :: String, _startServices :: Bool}
+makeLenses ''DockerParams
 
-    -- build project
-    run $ stack ["build"]
+data StackParams = StackParams{_dockerParams :: Maybe DockerParams}
+makeLenses ''StackParams
 
-    -- setup database
-    when options_setupTestDatabase .
-        run $ stackExecWithServices ["./db-devel-init.sh"]
+defaultStackParams :: StackParams
+defaultStackParams = StackParams{_dockerParams = Nothing}
 
-    -- run tests
-    when options_test $
-        run stackTestWithServices
-
-    when options_yesodDevel .
-        run $ stackExecWithServices ["yesod", "devel"]
-
-data DockerParams = DockerParams{dp_imageName :: String, dp_startServices :: Bool}
-
-stackCommand :: Maybe DockerParams -> [String] -> Command
-stackCommand mDockerParams subcommand = let
-    dockerOpts = case mDockerParams of
-        Just DockerParams{dp_imageName, dp_startServices} ->
+stack :: State StackParams () -> StackCommand -> Command
+stack paramsState cmd = let
+    sp = execState paramsState defaultStackParams
+    dockerOpts = case sp ^. dockerParams of
+        Just dp ->
             [ "--docker"
-            , "--docker-image=" <> dp_imageName
+            , "--docker-image=" <> dp ^. imageName
             , "--docker-env=tasknight_docker_startServices="
-              <> if dp_startServices then "1" else "0"
+              <> if dp ^. startServices then "1" else "0"
             ]
         Nothing -> []
+    stackCommand = case cmd of
+        SBuild                    -> ["build"]
+        SExec (Command prog args) -> "exec" : "--" : prog : args
+        SSetup                    -> ["setup"]
+        STest                     -> ["test"]
     in
-    Command "stack" $ dockerOpts <> subcommand
+    Command "stack" $ dockerOpts <> stackCommand
 
 logSubprocess :: Command -> IO ()
 logSubprocess = putStrLn . ("+ " <>) . showProc
@@ -123,7 +102,47 @@ applyDockerMachineEnv = getDockerEnv >>= applyEnv
     applyEnv = traverse_ $ uncurry setEnv
 
 dockerBuild :: String -> FilePath -> Command
-dockerBuild imageName imageDir = Command "docker" ["build", "--tag=" <> imageName, imageDir]
+dockerBuild imageTag imageDir = Command "docker" ["build", "--tag=" <> imageTag, imageDir]
 
--- | like RawCommand
-data Command = Command FilePath [String]
+main :: IO ()
+main = do
+    let withServices = dockerParams . _Just . startServices .= True
+
+    Options
+        { options_docker
+        , options_setupStack
+        , options_test
+        , options_setupTestDatabase
+        , options_yesodDevel
+        } <-
+            execParser program
+
+    -- setup environment
+    when options_docker $ do
+        case os of
+            "darwin"  -> applyDockerMachineEnv
+            "linux"   -> pure ()  -- Docker must be installed
+            _         -> error $ "unsupported OS " <> os
+        run $ dockerBuild dockerImage dockerfileDir
+
+    -- install GHC
+    when options_setupStack .
+        run $ stack noop SSetup
+
+    -- build project
+    run $ stack noop SBuild
+
+    -- setup database
+    when options_setupTestDatabase .
+        run . stack withServices $ SExec "./db-devel-init.sh"
+
+    -- run tests
+    when options_test .
+        run $ stack withServices STest
+
+    when options_yesodDevel .
+        run . stack withServices . SExec $ Command "yesod" ["devel"]
+
+-- | No operation, or no option.
+noop :: Applicative f => f ()
+noop = pure ()
