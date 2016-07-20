@@ -45,7 +45,7 @@ program = info (helper <*> options) $ fullDesc <> header "build helper"
         <*> switch (short 'b' <> long "setup-db"    <> help "setup test database before test")
         <*> switch (short 'y' <> long "yesod-devel" <> help "run `yesod devel` after all")
 
--- | like RawCommand
+-- | isomorphic to System.Process.CmdSpec.RawCommand
 data Command = Command FilePath [String]
 
 data StackCommand = SBuild
