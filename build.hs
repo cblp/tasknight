@@ -3,15 +3,16 @@
 {-# OPTIONS -Wall -Werror #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TemplateHaskell #-}
 
+module Main (main) where
+
 import Control.Arrow       (second)
-import Control.Lens        (makeLenses, (.=), (^.), _Just)
+import Control.Lens        (makeLenses, (&~), (.=), (?=), (^.), _Just)
 import Control.Monad       (when)
-import Control.Monad.State (State, execState)
-import Data.Foldable       (traverse_)
+import Control.Monad.State (State)
 import Data.List           (stripPrefix)
-import Data.Maybe          (mapMaybe)
 import Data.Monoid         ((<>))
 import Data.String         (IsString(..))
 import Options.Applicative (ParserInfo, execParser, fullDesc, header, help, helper, info, long,
@@ -28,11 +29,11 @@ dockerImage :: String
 dockerImage = "cblp/tasknight-build"
 
 data Options = Options
-    { options_docker            :: Bool
-    , options_setupStack        :: Bool
-    , options_test              :: Bool
-    , options_setupTestDatabase :: Bool
-    , options_yesodDevel        :: Bool
+    { o_docker            :: Bool
+    , o_setupStack        :: Bool
+    , o_test              :: Bool
+    , o_setupTestDatabase :: Bool
+    , o_yesodDevel        :: Bool
     }
     deriving Show
 
@@ -40,11 +41,11 @@ program :: ParserInfo Options
 program = info (helper <*> options) $ fullDesc <> header "build helper"
   where
     options = Options
-        <$> switch (short 'd' <> long "docker"      <> help "use Docker")
-        <*> switch (short 's' <> long "setup"       <> help "run `stack setup`")
-        <*> switch (short 't' <> long "test"        <> help "run tests")
-        <*> switch (short 'b' <> long "setup-db"    <> help "setup test database")
-        <*> switch (short 'y' <> long "yesod-devel" <> help "run `yesod devel`")
+        <$> switch (short 'd' <> long "docker"      <> help "use Docker for build and test")
+        <*> switch (short 's' <> long "setup"       <> help "run `stack setup` before build")
+        <*> switch (short 't' <> long "test"        <> help "run tests after build")
+        <*> switch (short 'b' <> long "setup-db"    <> help "setup test database before test")
+        <*> switch (short 'y' <> long "yesod-devel" <> help "run `yesod devel` after all")
 
 -- | like RawCommand
 data Command = Command FilePath [String]
@@ -67,7 +68,7 @@ defaultStackParams = StackParams{_dockerParams = Nothing}
 
 stack :: State StackParams () -> StackCommand -> Command
 stack paramsState cmd = let
-    sp = execState paramsState defaultStackParams
+    sp = defaultStackParams &~ paramsState
     dockerOpts = case sp ^. dockerParams of
         Just dp ->
             [ "--docker"
@@ -99,34 +100,34 @@ run cmd@(Command prog args) = do
     callProcess prog args
 
 applyDockerMachineEnv :: IO ()
-applyDockerMachineEnv = getDockerEnv >>= applyEnv
+applyDockerMachineEnv = getDockerMachineEnv >>= applyEnv
   where
-    getDockerEnv = do
+    getDockerMachineEnv = do
         let prog = "docker-machine"
-            args = ["env", "--shell=cmd", "default"]
+            args = ["env", "--shell=cmd"]
         logSubprocess $ Command prog args
         parseEnv <$> readProcess prog args ""
-    parseEnv = mapMaybe (fmap (second tail . break ('=' ==)) . stripPrefix "SET ") . lines
-    applyEnv = traverse_ $ uncurry setEnv
+    parseEnv content =  [ splitBy '=' varVal
+                        | line <- lines content
+                        , Just varVal <- [stripPrefix "SET " line]
+                        ]
+    applyEnv = mapM_ $ uncurry setEnv
+    splitBy c = second tail . break (c ==)
 
 dockerBuild :: String -> FilePath -> Command
 dockerBuild imageTag imageDir = Command "docker" ["build", "--tag=" <> imageTag, imageDir]
 
 main :: IO ()
 main = do
-    let withServices = dockerParams . _Just . startServices .= True
+    Options{..} <- execParser program
 
-    Options
-        { options_docker
-        , options_setupStack
-        , options_test
-        , options_setupTestDatabase
-        , options_yesodDevel
-        } <-
-            execParser program
+    let withDockerIfRequested =
+            when o_docker $
+                dockerParams ?= DockerParams{_imageName=dockerImage, _startServices=False}
+    let withServices = dockerParams ?. startServices .= True
 
     -- setup environment
-    when options_docker $ do
+    when o_docker $ do
         case os of
             "darwin"  -> applyDockerMachineEnv
             "linux"   -> pure ()  -- Docker must be installed
@@ -134,24 +135,24 @@ main = do
         run $ dockerBuild dockerImage dockerfileDir
 
     -- install GHC
-    when options_setupStack .
-        run $ stack noop SSetup
+    when o_setupStack .
+        run $ stack withDockerIfRequested SSetup
 
     -- build project
-    run $ stack noop SBuild
+    run $ stack withDockerIfRequested SBuild
 
     -- setup database
-    when options_setupTestDatabase .
-        run . stack withServices $ SExec [] "./db-devel-init.sh"
+    when o_setupTestDatabase .
+        run . stack (withDockerIfRequested >> withServices) $ SExec [] "./db-devel-init.sh"
 
     -- run tests
-    when options_test .
-        run $ stack withServices STest
+    when o_test .
+        run $ stack (withDockerIfRequested >> withServices) STest
 
-    when options_yesodDevel .
+    when o_yesodDevel .
         withCurrentDirectory "frontend" .
-            run . stack withServices . SExec ["yesod-bin", "cabal-install"] $ Command "yesod" ["devel"]
+            run . stack (withDockerIfRequested >> withServices) .
+                SExec ["yesod-bin", "cabal-install"] $ Command "yesod" ["devel"]
 
--- | No operation, or no option.
-noop :: Applicative f => f ()
-noop = pure ()
+  where
+    optic1 ?. optic2 = optic1 . _Just . optic2
