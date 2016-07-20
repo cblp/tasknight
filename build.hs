@@ -2,7 +2,6 @@
 -- stack runhaskell --package=directory-1.2.3.0 --package=lens --package=optparse-applicative
 {-# OPTIONS -Wall -Werror #-}
 {-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TemplateHaskell #-}
 
@@ -14,7 +13,6 @@ import Control.Monad       (when)
 import Control.Monad.State (State)
 import Data.List           (stripPrefix)
 import Data.Monoid         ((<>))
-import Data.String         (IsString(..))
 import Options.Applicative (ParserInfo, execParser, fullDesc, header, help, helper, info, long,
                             short, switch)
 import System.Directory    (withCurrentDirectory)
@@ -49,8 +47,6 @@ program = info (helper <*> options) $ fullDesc <> header "build helper"
 
 -- | like RawCommand
 data Command = Command FilePath [String]
-instance IsString Command where
-    fromString prog = Command prog []
 
 data StackCommand = SBuild
                   | SExec{additionalPackages :: [String], subCommand :: Command}
@@ -143,7 +139,8 @@ main = do
 
     -- setup database
     when o_setupTestDatabase .
-        run . stack (withDockerIfRequested >> withServices) $ SExec [] "./db-devel-init.sh"
+        run . stack (withDockerIfRequested >> withServices) . SExec [] $
+            Command "./db-devel-init.sh" []
 
     -- run tests
     when o_test .
