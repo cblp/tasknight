@@ -1,5 +1,5 @@
 #!/usr/bin/env stack
--- stack runhaskell --package=directory-1.2.3.0 --package=lens --package=optparse-applicative
+-- stack runhaskell --package=lens --package=optparse-applicative
 {-# OPTIONS -Wall -Werror #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RecordWildCards #-}
@@ -8,6 +8,7 @@
 module Main (main) where
 
 import Control.Arrow       (second)
+import Control.Exception   (bracket)
 import Control.Lens        (makeLenses, (&~), (.=), (?=), (^.), _Just)
 import Control.Monad       (when)
 import Control.Monad.State (State)
@@ -15,7 +16,7 @@ import Data.List           (stripPrefix)
 import Data.Monoid         ((<>))
 import Options.Applicative (ParserInfo, execParser, fullDesc, header, help, helper, info, long,
                             short, switch)
-import System.Directory    (withCurrentDirectory)
+import System.Directory    (getCurrentDirectory, setCurrentDirectory)
 import System.Environment  (setEnv)
 import System.Info         (os)
 import System.Process      (callProcess, readProcess, showCommandForUser)
@@ -153,3 +154,9 @@ main = do
 
   where
     optic1 ?. optic2 = optic1 . _Just . optic2
+
+-- backported from directory-1.2.3, not in LTS yet (as of lts-6.8) (in Nightly already)
+-- TODO(cblp, 2016-07-22) remove
+withCurrentDirectory :: FilePath -> IO a -> IO a
+withCurrentDirectory dir action =
+    bracket getCurrentDirectory setCurrentDirectory $ \ _ -> setCurrentDirectory dir >> action
