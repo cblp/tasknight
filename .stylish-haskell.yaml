@@ -151,3 +151,8 @@ columns: 100
 # No language extensions are enabled by default.
 language_extensions:
   - MultiParamTypeClasses
+
+  # Yesod set
+  - QuasiQuotes
+  - TemplateHaskell
+  - TypeFamilies

@@ -1,6 +1,6 @@
 [![Build Status](https://travis-ci.org/cblp/tasknight.svg?branch=master)](https://travis-ci.org/cblp/tasknight)
 
-# Tasknight 
+# Tasknight
 
 Your notification center.
 
@@ -8,12 +8,21 @@ Your notification center.
 
 ### Build
 
-    $ stack build
+    $ ./build.hs
 
 ### Test
 
-    $ stack test --pedantic
+1. Install Postgres
+  - Ubuntu:
+
+          $ sudo apt install postgresql
+  - Mac OS:
+
+          $ brew install postgresql
+          $ brew services start postgresql
+2. Run
+        $ ./build.hs --test
 
 ### Run
 
-    $ stack exec --package=tasknight-frontend tasknight-frontend
+    $ ./build.hs --yesod-devel
