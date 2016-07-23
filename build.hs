@@ -71,7 +71,7 @@ main = do
     run $ stack SBuild
 
     -- setup database
-    when o_setupTestDatabase . run . stack . SExec [] $ Command "./db-devel-init.sh" []
+    when o_setupTestDatabase . run $ Command "./db-devel-init.sh" []
 
     -- run tests
     when o_test . run $ stack STest
