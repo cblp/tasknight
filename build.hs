@@ -19,6 +19,7 @@ data Options = Options
     , o_test              :: Bool
     , o_setupTestDatabase :: Bool
     , o_yesodDevel        :: Bool
+    , o_runFrontend       :: Bool
     }
     deriving Show
 
@@ -26,10 +27,11 @@ program :: ParserInfo Options
 program = info (helper <*> options) $ fullDesc <> header "build helper"
   where
     options = Options
-        <$> switch (short 's' <> long "setup"       <> help "run `stack setup` before build")
-        <*> switch (short 't' <> long "test"        <> help "run tests after build")
-        <*> switch (short 'b' <> long "setup-db"    <> help "setup test database before test")
-        <*> switch (short 'y' <> long "yesod-devel" <> help "run `yesod devel` after all")
+        <$> switch (short 's' <> long "setup"         <> help "run `stack setup` before build")
+        <*> switch (short 't' <> long "test"          <> help "run tests after build")
+        <*> switch (short 'b' <> long "setup-db"      <> help "setup test database before test")
+        <*> switch (short 'y' <> long "yesod-devel"   <> help "run `yesod devel` after all")
+        <*> switch (short 'f' <> long "run-frontend"  <> help "run frontend after all")
 
 -- | isomorphic to System.Process.CmdSpec.RawCommand
 data Command = Command FilePath [String]
@@ -79,6 +81,10 @@ main = do
     when o_yesodDevel .
         withCurrentDirectory "frontend" .
             run . stack . SExec ["yesod-bin", "cabal-install"] $ Command "yesod" ["devel"]
+
+    when o_runFrontend .
+        withCurrentDirectory "frontend" .
+            run . stack . SExec [] $ Command "tasknight-frontend" []
 
 -- backported from directory-1.2.3, not in LTS yet (as of lts-6.8) (in Nightly already)
 -- TODO(cblp, 2016-07-22) remove
