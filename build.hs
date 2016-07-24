@@ -18,7 +18,6 @@ data Options = Options
     { o_setupStack        :: Bool
     , o_test              :: Bool
     , o_setupTestDatabase :: Bool
-    , o_yesodDevel        :: Bool
     , o_runFrontend       :: Bool
     }
     deriving Show
@@ -30,7 +29,6 @@ program = info (helper <*> options) $ fullDesc <> header "build helper"
         <$> switch (short 's' <> long "setup"         <> help "run `stack setup` before build")
         <*> switch (short 't' <> long "test"          <> help "run tests after build")
         <*> switch (short 'b' <> long "setup-db"      <> help "setup test database before test")
-        <*> switch (short 'y' <> long "yesod-devel"   <> help "run `yesod devel` after all")
         <*> switch (short 'f' <> long "run-frontend"  <> help "run frontend after all")
 
 -- | isomorphic to System.Process.CmdSpec.RawCommand
@@ -77,10 +75,6 @@ main = do
 
     -- run tests
     when o_test . run $ stack STest
-
-    when o_yesodDevel .
-        withCurrentDirectory "frontend" .
-            run . stack . SExec ["yesod-bin", "cabal-install"] $ Command "yesod" ["devel"]
 
     when o_runFrontend .
         withCurrentDirectory "frontend" .
