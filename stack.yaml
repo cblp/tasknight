@@ -2,7 +2,8 @@ resolver: lts-5.18
 
 packages:
   - dashboard
-  # - frontend # temporarily not used
+  - ff
+  # - frontend # temporarily disabled
 
 extra-deps:
   - imap-0.2.0.3          # for Tasknight.Util.IMAP

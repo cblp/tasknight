@@ -1,0 +1,10 @@
+name: ff
+version: 0.0.1
+
+executables:
+  ff:
+    source-dirs: app
+    main: Main.hs
+    ghc-options: -threaded -rtsopts -with-rtsopts=-N -Wall -Werror
+    dependencies:
+      - base
