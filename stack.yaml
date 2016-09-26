@@ -1,17 +1,21 @@
-resolver: lts-5.18
+resolver: lts-6.18
 
 packages:
   - dashboard
   - ff
-  # - frontend # temporarily disabled
+
+  # extra-deps:
+  - location:
+      git: https://github.com/cblp/google-oauth2.git
+      commit: origin/lts6
+    extra-dep: true
 
 extra-deps:
   - imap-0.2.0.3          # for Tasknight.Util.IMAP
   - monadIO-0.10.1.4      # for imap
   - rolling-queue-0.1     # for imap
 
-  - google-oauth2-0.2.1   # for Tasknight.Provider.Gmail
-  # TODO(cblp, 2016-06-25) make google-oauth2 support more recent aeson
+  # - google-oauth2-0.2.1   # for Tasknight.Provider.Gmail
 
   - email-header-0.4.0  # for Tasknight.Util.IMAP
 
@@ -20,6 +24,3 @@ extra-deps:
 #     OAuth2:
 #       - hoauth2
 #       - authenticate-oauth
-#     IMAP:
-#       HaskellNet:
-#         '+': stackage
