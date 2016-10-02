@@ -1,4 +1,4 @@
-resolver: lts-6.18
+resolver: lts-7.1
 
 packages:
   - dashboard
@@ -9,9 +9,13 @@ packages:
       git: https://github.com/cblp/google-oauth2.git
       commit: origin/lts6
     extra-dep: true
+  - location:
+      git: https://github.com/cblp/imap.git
+      commit: origin/lts7
+    extra-dep: true
 
 extra-deps:
-  - imap-0.2.0.3          # for Tasknight.Util.IMAP
+  # - imap-0.2.0.3          # for Tasknight.Util.IMAP
   - monadIO-0.10.1.4      # for imap
   - rolling-queue-0.1     # for imap
 
