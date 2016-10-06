@@ -9,10 +9,12 @@ packages:
       git: https://github.com/cblp/google-oauth2.git
       commit: origin/lts6
     extra-dep: true
+    # pending: https://github.com/pbrisbin/google-oauth2/pull/3
   - location:
       git: https://github.com/cblp/imap.git
       commit: origin/lts7
     extra-dep: true
+    # pending: https://github.com/mkawalec/imap/pull/10
 
 extra-deps:
   # - imap-0.2.0.3          # for Tasknight.Util.IMAP
