@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE NamedFieldPuns #-}
 
 module Main where
 
@@ -33,15 +34,16 @@ programInfo =
              help "Write to stderr what's happening") <*>
         (fromMaybe Now <$>
          optional
-             (subparser $
-              command "now" $
-              info nowOptions $ progDesc "Show what you can do now (default)"))
+             (subparser . command "now" . info nowOptions $
+              progDesc "Show what you can do now (default)"))
     nowOptions = pure Now
 
 main :: IO ()
 main = do
-    options <- execParser programInfo
-    (`runReaderT` options) $ logVerbose $ "Options = " <> show options
+    options@Options {o_cmd} <- execParser programInfo
+    (`runReaderT` options) $ do
+        logVerbose $ "options = " <> show options
+        runCmd o_cmd
 
 logVerbose
     :: (MonadReader Options io, MonadIO io)
@@ -49,3 +51,8 @@ logVerbose
 logVerbose msg = do
     v <- asks o_verbose
     when v . liftIO $ hPutStrLn stderr msg
+
+runCmd
+    :: MonadIO io
+    => Cmd -> io ()
+runCmd Now = undefined
