@@ -3,15 +3,22 @@
 
 module Main where
 
-import Control.Monad (when)
+import Control.Exception (throwIO, Exception)
+import Control.Monad (when, (>=>))
+import Control.Monad.Except (runExceptT, ExceptT)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Reader (MonadReader, runReaderT, asks)
 import Data.Maybe (fromMaybe)
 import Data.Monoid ((<>))
+import Network.HTTP.Client (newManager)
+import Network.HTTP.Client.TLS (tlsManagerSettings)
 import Options.Applicative
        (execParser, info, helper, fullDesc, long, short, switch,
         ParserInfo, help, progDesc, subparser, command, optional)
 import System.IO (hPutStrLn, stderr)
+
+import Web.Trello.Client (runTrelloClient, getMyBoards)
+import Web.Trello.Client.BaseUrl (production)
 
 data Cmd =
     Now
@@ -55,4 +62,12 @@ logVerbose msg = do
 runCmd
     :: MonadIO io
     => Cmd -> io ()
-runCmd Now = undefined
+runCmd Now = do
+    manager <- liftIO $ newManager tlsManagerSettings
+    liftIO . giveup . runTrelloClient manager production $
+        getMyBoards >>= liftIO . print
+
+giveup
+    :: (MonadIO io, Exception e)
+    => ExceptT e io a -> io a
+giveup = runExceptT >=> either (liftIO . throwIO) pure
