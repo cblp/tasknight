@@ -3,6 +3,8 @@ resolver: lts-7.1
 packages:
   - dashboard
   - ff
+  - trello-api
+  - trello-client
 
   # extra-deps:
   - location:

@@ -1,0 +1,13 @@
+name: trello-client
+
+library:
+  source-dirs: lib
+  dependencies:
+    - base
+    - http-client
+    - mtl
+    - servant-client
+
+    - trello-api
+
+ghc-options: -Wall

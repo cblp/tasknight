@@ -1,0 +1,10 @@
+name: trello-api
+
+library:
+  source-dirs: lib
+  dependencies:
+    - aeson
+    - base
+    - servant
+
+ghc-options: -Wall

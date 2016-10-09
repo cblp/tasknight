@@ -5,9 +5,12 @@ executables:
   ff:
     source-dirs: app
     main: Main.hs
-    ghc-options: -threaded -rtsopts -with-rtsopts=-N -Wall -Werror
+    ghc-options: -threaded -rtsopts -with-rtsopts=-N
     dependencies:
       - base
-      # - ether
       - mtl
       - optparse-applicative
+
+      - trello-client
+
+ghc-options: -Wall
