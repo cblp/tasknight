@@ -4,51 +4,82 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RecordWildCards #-}
 
-module Main (main) where
+module Main
+  ( main
+  ) where
 
-import Control.Exception   (bracket)
-import Control.Monad       (when)
-import Data.Monoid         ((<>))
-import Options.Applicative (ParserInfo, execParser, fullDesc, header, help, helper, info, long,
-                            short, switch)
-import System.Directory    (getCurrentDirectory, setCurrentDirectory)
-import System.Process      (callProcess, showCommandForUser)
+import Control.Monad (when)
+import Data.Monoid ((<>))
+import Options.Applicative
+       (ParserInfo, execParser, fullDesc, header, help, helper, info,
+        long, short, switch, flag)
+import System.Directory (withCurrentDirectory)
+import System.Process (callProcess, showCommandForUser)
 
 data Options = Options
-    { o_setupStack        :: Bool
-    , o_test              :: Bool
+    { o_terminal :: Maybe Bool
+    , o_setupStack :: Bool
+    , o_test :: Bool
     , o_setupTestDatabase :: Bool
-    , o_runFrontend       :: Bool
-    }
-    deriving Show
+    , o_runFrontend :: Bool
+    } deriving (Show)
 
-program :: ParserInfo Options
-program = info (helper <*> options) $ fullDesc <> header "build helper"
+programInfo :: ParserInfo Options
+programInfo =
+    info (helper <*> options) $ fullDesc <> header "build and test helper"
   where
-    options = Options
-        <$> switch (short 's' <> long "setup"         <> help "run `stack setup` before build")
-        <*> switch (short 't' <> long "test"          <> help "run tests after build")
-        <*> switch (short 'b' <> long "setup-db"      <> help "setup test database before test")
-        <*> switch (short 'f' <> long "run-frontend"  <> help "run frontend after all")
+    options =
+        Options <$>
+        flag
+            Nothing
+            (Just False)
+            (long "no-terminal" <>
+             help "Treat terminal as false, default: auto-detect") <*>
+        switch
+            (short 's' <> long "setup" <>
+             help "Setup GHC and Stack before build") <*>
+        switch (short 't' <> long "test" <> help "Run tests after build") <*>
+        switch
+            (short 'b' <> long "setup-db" <>
+             help "Setup test database before test") <*>
+        switch
+            (short 'f' <> long "run-frontend" <> help "Run frontend after all")
 
 -- | isomorphic to System.Process.CmdSpec.RawCommand
-data Command = Command FilePath [String]
+data Command =
+    Command FilePath
+            [String]
 
-data StackCommand = SBuild
-                  | SExec{additionalPackages :: [String], subCommand :: Command}
-                  | SSetup
-                  | STest
+data BuildOption
+    = OnlyDependencies
+    | Pedantic
 
-stack :: StackCommand -> Command
-stack cmd = Command "stack" $ case cmd of
-    SBuild ->
-        ["build"]
-    SExec{additionalPackages, subCommand = Command prog args} ->
-        "exec" : ["--package=" <> p | p <- additionalPackages] <> ("--" : prog : args)
-    SSetup ->
-        ["setup"]
-    STest ->
-        ["test"]
+instance Show BuildOption where
+    show OnlyDependencies = "--only-dependencies"
+    show Pedantic = "--pedantic"
+
+data StackCommand
+    = Build BuildOption
+    | Exec { additionalPackages :: [String]
+          ,  subCommand :: Command}
+    | Setup
+    | Test BuildOption
+
+stack :: Maybe Bool -> StackCommand -> Command
+stack optTerminal cmd =
+    Command "stack" . addOptTerminal $
+    case cmd of
+        Build opt -> ["build", show opt]
+        Exec {additionalPackages, subCommand = Command prog args} ->
+            "exec" :
+            ["--package=" <> p | p <- additionalPackages] <>
+            ("--" : prog : args)
+        Setup -> ["setup"]
+        Test opt -> ["test", show opt]
+  where
+    addOptTerminal :: [String] -> [String]
+    addOptTerminal =
+        maybe id (\t -> (:) ("--" <> bool "no-" "" t <> "terminal")) optTerminal
 
 logSubprocess :: Command -> IO ()
 logSubprocess = putStrLn . ("+ " <>) . showProc
@@ -62,26 +93,20 @@ run cmd@(Command prog args) = do
 
 main :: IO ()
 main = do
-    Options{..} <- execParser program
-
+    Options {..} <- execParser programInfo
     -- install GHC
-    when o_setupStack . run $ stack SSetup
-
+    when o_setupStack . run $ stack o_terminal Setup
     -- build project
-    run $ stack SBuild
-
+    run . stack o_terminal $ Build OnlyDependencies
+    run . stack o_terminal $ Build Pedantic
     -- setup database
     when o_setupTestDatabase . run $ Command "./db-devel-init.sh" []
-
     -- run tests
-    when o_test . run $ stack STest
-
+    when o_test . run . stack o_terminal $ Test Pedantic
     when o_runFrontend .
-        withCurrentDirectory "frontend" .
-            run . stack . SExec [] $ Command "tasknight-frontend" []
+        withCurrentDirectory "frontend" . run . stack o_terminal . Exec [] $
+        Command "tasknight-frontend" []
 
--- backported from directory-1.2.3, not in LTS yet (as of lts-6.8) (in Nightly already)
--- TODO(cblp, 2016-07-22) remove
-withCurrentDirectory :: FilePath -> IO a -> IO a
-withCurrentDirectory dir action =
-    bracket getCurrentDirectory setCurrentDirectory $ \ _ -> setCurrentDirectory dir >> action
+bool :: a -> a -> Bool -> a
+bool f _ False = f
+bool _ t True = t
