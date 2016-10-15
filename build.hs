@@ -1,25 +1,25 @@
-#!/usr/bin/env stack
 -- stack runhaskell --package=optparse-applicative
 {-# OPTIONS -Wall -Werror #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RecordWildCards #-}
 
 module Main
-  ( main
-  ) where
+    ( main
+    ) where
 
-import Control.Monad (when)
-import Data.Monoid ((<>))
-import Options.Applicative
-       (ParserInfo, execParser, fullDesc, header, help, helper, info,
-        long, short, switch, flag)
-import System.Directory (withCurrentDirectory)
-import System.Process (callProcess, showCommandForUser)
+import           Control.Monad (when)
+import           Data.Monoid ((<>))
+import           Options.Applicative
+                 (ParserInfo, execParser, flag, fullDesc, header, help, helper,
+                  info, long, short, switch)
+import           System.Directory (withCurrentDirectory)
+import           System.Process (callProcess, showCommandForUser)
 
 data Options = Options
     { o_terminal :: Maybe Bool
     , o_setupStack :: Bool
     , o_test :: Bool
+    , o_fileWatch :: Bool
     , o_setupTestDatabase :: Bool
     , o_runFrontend :: Bool
     } deriving (Show)
@@ -40,6 +40,11 @@ programInfo =
              help "Setup GHC and Stack before build") <*>
         switch (short 't' <> long "test" <> help "Run tests after build") <*>
         switch
+            (short 'w' <> long "file-watch" <>
+             help
+                 "Watch for changes in local files and automatically rebuild. \
+                 \(Pass `--file-watch` option to `stack`)") <*>
+        switch
             (short 'b' <> long "setup-db" <>
              help "Setup test database before test") <*>
         switch
@@ -51,33 +56,34 @@ data Command =
             [String]
 
 data BuildOption
-    = OnlyDependencies
+    = FileWatch
+    | OnlyDependencies
     | Pedantic
 
 instance Show BuildOption where
+    show FileWatch = "--file-watch"
     show OnlyDependencies = "--only-dependencies"
     show Pedantic = "--pedantic"
 
 data StackCommand
-    = Build BuildOption
+    = Build [BuildOption]
     | Exec { additionalPackages :: [String]
           ,  subCommand :: Command}
     | Setup
-    | Test BuildOption
+    | Test [BuildOption]
 
 stack :: Maybe Bool -> StackCommand -> Command
 stack optTerminal cmd =
     Command "stack" . addOptTerminal $
     case cmd of
-        Build opt -> ["build", show opt]
+        Build opts -> "build" : map show opts
         Exec {additionalPackages, subCommand = Command prog args} ->
             "exec" :
             ["--package=" <> p | p <- additionalPackages] <>
             ("--" : prog : args)
         Setup -> ["setup"]
-        Test opt -> ["test", show opt]
+        Test opts -> "test" : map show opts
   where
-    addOptTerminal :: [String] -> [String]
     addOptTerminal =
         maybe id (\t -> (:) ("--" <> bool "no-" "" t <> "terminal")) optTerminal
 
@@ -97,12 +103,14 @@ main = do
     -- install GHC
     when o_setupStack . run $ stack o_terminal Setup
     -- build project
-    run . stack o_terminal $ Build OnlyDependencies
-    run . stack o_terminal $ Build Pedantic
+    run . stack o_terminal $ Build [OnlyDependencies]
+    run . stack o_terminal $
+        Build $ Pedantic : [FileWatch | not (o_test || o_runFrontend)]
     -- setup database
     when o_setupTestDatabase . run $ Command "./db-devel-init.sh" []
     -- run tests
-    when o_test . run . stack o_terminal $ Test Pedantic
+    when o_test . run . stack o_terminal $
+        Test $ Pedantic : [FileWatch | not o_runFrontend]
     when o_runFrontend .
         withCurrentDirectory "frontend" . run . stack o_terminal . Exec [] $
         Command "tasknight-frontend" []
