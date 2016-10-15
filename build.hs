@@ -65,10 +65,14 @@ instance Show BuildOption where
     show OnlyDependencies = "--only-dependencies"
     show Pedantic = "--pedantic"
 
+data ExecOptions = ExecOptions
+    { additionalPackages :: [String]
+    , subCommand :: Command
+    }
+
 data StackCommand
     = Build [BuildOption]
-    | Exec { additionalPackages :: [String]
-          ,  subCommand :: Command}
+    | Exec ExecOptions
     | Setup
     | Test [BuildOption]
 
@@ -77,7 +81,7 @@ stack optTerminal cmd =
     Command "stack" . addOptTerminal $
     case cmd of
         Build opts -> "build" : map show opts
-        Exec {additionalPackages, subCommand = Command prog args} ->
+        Exec ExecOptions {additionalPackages, subCommand = Command prog args} ->
             "exec" :
             ["--package=" <> p | p <- additionalPackages] <>
             ("--" : prog : args)
@@ -105,15 +109,20 @@ main = do
     -- build project
     run . stack o_terminal $ Build [OnlyDependencies]
     run . stack o_terminal $
-        Build $ Pedantic : [FileWatch | not (o_test || o_runFrontend)]
+        Build $
+        Pedantic : [FileWatch | o_fileWatch && not (o_test || o_runFrontend)]
     -- setup database
     when o_setupTestDatabase . run $ Command "./db-devel-init.sh" []
     -- run tests
     when o_test . run . stack o_terminal $
-        Test $ Pedantic : [FileWatch | not o_runFrontend]
+        Test $ Pedantic : [FileWatch | o_fileWatch && not o_runFrontend]
     when o_runFrontend .
-        withCurrentDirectory "frontend" . run . stack o_terminal . Exec [] $
-        Command "tasknight-frontend" []
+        withCurrentDirectory "frontend" . run . stack o_terminal $
+        Exec
+            ExecOptions
+            { additionalPackages = []
+            , subCommand = Command "tasknight-frontend" []
+            }
 
 bool :: a -> a -> Bool -> a
 bool f _ False = f

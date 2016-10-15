@@ -27,10 +27,10 @@ before_install:
     | tar xz --wildcards --strip-components=1 -C ~/.local/bin '*/stack'
 
 install:
-  - ./build.hs --no-terminal
+  - ./build --no-terminal
 
 before_script:
   - ./db-devel-init.sh
 
 script:
-  - ./build.hs --no-terminal --test
+  - ./build --no-terminal --test
