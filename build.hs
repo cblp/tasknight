@@ -7,53 +7,54 @@ module Main
     ( main
     ) where
 
-import           Control.Monad (when)
-import           Data.Monoid ((<>))
-import           Options.Applicative
-                 (ParserInfo, execParser, flag, fullDesc, header, help, helper,
-                  info, long, short, switch)
-import           System.Directory (withCurrentDirectory)
-import           System.Process (callProcess, showCommandForUser)
+import Control.Monad       (when)
+import Data.Monoid         ((<>))
+import Options.Applicative (ParserInfo, execParser, flag, fullDesc, header,
+                            help, helper, info, long, short, switch)
+import System.Directory    (withCurrentDirectory)
+import System.Process      (callProcess, showCommandForUser)
 
 data Options = Options
-    { o_terminal :: Maybe Bool
-    , o_setupStack :: Bool
-    , o_test :: Bool
-    , o_fileWatch :: Bool
+    { o_terminal          :: Maybe Bool
+    , o_setupStack        :: Bool
+    , o_test              :: Bool
+    , o_fileWatch         :: Bool
     , o_setupTestDatabase :: Bool
-    , o_runFrontend :: Bool
-    } deriving (Show)
+    , o_runFrontend       :: Bool
+    }
+    deriving (Show)
 
 programInfo :: ParserInfo Options
 programInfo =
     info (helper <*> options) $ fullDesc <> header "build and test helper"
   where
     options =
-        Options <$>
-        flag
+        Options
+        <$> flag
             Nothing
             (Just False)
-            (long "no-terminal" <>
-             help "Treat terminal as false, default: auto-detect") <*>
-        switch
-            (short 's' <> long "setup" <>
-             help "Setup GHC and Stack before build") <*>
-        switch (short 't' <> long "test" <> help "Run tests after build") <*>
-        switch
-            (short 'w' <> long "file-watch" <>
-             help
-                 "Watch for changes in local files and automatically rebuild. \
-                 \(Pass `--file-watch` option to `stack`)") <*>
-        switch
-            (short 'b' <> long "setup-db" <>
-             help "Setup test database before test") <*>
-        switch
+            ( long "no-terminal"
+              <> help "Treat terminal as false, default: auto-detect"
+            )
+        <*> switch
+            ( short 's' <> long "setup"
+              <> help "Setup GHC and Stack before build"
+            )
+        <*> switch (short 't' <> long "test" <> help "Run tests after build")
+        <*> switch
+            ( short 'w' <> long "file-watch"
+              <> help
+                  "Watch for changes in local files and automatically rebuild. \
+                  \(Pass `--file-watch` option to `stack`)"
+            )
+        <*> switch
+            ( short 'b' <> long "setup-db"
+              <> help "Setup test database before test" )
+        <*> switch
             (short 'f' <> long "run-frontend" <> help "Run frontend after all")
 
 -- | isomorphic to System.Process.CmdSpec.RawCommand
-data Command =
-    Command FilePath
-            [String]
+data Command = Command FilePath [String]
 
 data BuildOption
     = FileWatch
@@ -61,13 +62,13 @@ data BuildOption
     | Pedantic
 
 instance Show BuildOption where
-    show FileWatch = "--file-watch"
+    show FileWatch        = "--file-watch"
     show OnlyDependencies = "--only-dependencies"
-    show Pedantic = "--pedantic"
+    show Pedantic         = "--pedantic"
 
 data ExecOptions = ExecOptions
     { additionalPackages :: [String]
-    , subCommand :: Command
+    , subCommand         :: Command
     }
 
 data StackCommand
@@ -88,8 +89,11 @@ stack optTerminal cmd =
         Setup -> ["setup"]
         Test opts -> "test" : map show opts
   where
-    addOptTerminal =
-        maybe id (\t -> (:) ("--" <> bool "no-" "" t <> "terminal")) optTerminal
+    addOptTerminal = case optTerminal of
+        Nothing -> id
+        Just t -> \opts ->
+            "--" <> (if t then "no-" else "") <> "terminal" : opts
+
 
 logSubprocess :: Command -> IO ()
 logSubprocess = putStrLn . ("+ " <>) . showProc
@@ -118,12 +122,8 @@ main = do
         Test $ Pedantic : [FileWatch | o_fileWatch && not o_runFrontend]
     when o_runFrontend .
         withCurrentDirectory "frontend" . run . stack o_terminal $
-        Exec
-            ExecOptions
-            { additionalPackages = []
-            , subCommand = Command "tasknight-frontend" []
-            }
-
-bool :: a -> a -> Bool -> a
-bool f _ False = f
-bool _ t True = t
+            Exec
+                ExecOptions
+                    { additionalPackages = []
+                    , subCommand = Command "tasknight-frontend" []
+                    }

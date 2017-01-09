@@ -6,5 +6,6 @@ library:
     - aeson
     - base
     - servant
+    - text
 
 ghc-options: -Wall

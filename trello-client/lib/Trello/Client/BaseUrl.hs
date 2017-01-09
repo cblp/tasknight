@@ -1,4 +1,4 @@
-module Web.Trello.Client.BaseUrl
+module Trello.Client.BaseUrl
   ( production
   ) where
 

@@ -5,14 +5,15 @@ executables:
   ff:
     source-dirs: exe
     main: Main.hs
-    ghc-options: -threaded -rtsopts -with-rtsopts=-N
-    dependencies:
-      - base
-      - http-client
-      - http-client-tls
-      - mtl
-      - optparse-applicative
 
-      - trello-client
+ghc-options: -Wall -threaded -rtsopts -with-rtsopts=-N
 
-ghc-options: -Wall
+dependencies:
+  - base
+  - http-client
+  - http-client-tls
+  - mtl
+  - optparse-applicative
+  - transformers
+  # project
+  - trello-client

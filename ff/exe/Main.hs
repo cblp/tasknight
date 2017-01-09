@@ -3,30 +3,30 @@
 
 module Main where
 
-import Control.Exception (throwIO, Exception)
+import Control.Exception (Exception, throwIO)
 import Control.Monad (when, (>=>))
-import Control.Monad.Except (runExceptT, ExceptT)
+import Control.Monad.Except (ExceptT, runExceptT)
 import Control.Monad.IO.Class (MonadIO, liftIO)
-import Control.Monad.Reader (MonadReader, runReaderT, asks)
+import Control.Monad.Reader (MonadReader, asks, runReaderT)
 import Data.Maybe (fromMaybe)
 import Data.Monoid ((<>))
 import Network.HTTP.Client (newManager)
 import Network.HTTP.Client.TLS (tlsManagerSettings)
-import Options.Applicative
-       (execParser, info, helper, fullDesc, long, short, switch,
-        ParserInfo, help, progDesc, subparser, command, optional)
+import Options.Applicative (ParserInfo, command, execParser, fullDesc, help,
+                            helper, info, long, optional, progDesc, short,
+                            subparser, switch)
 import System.IO (hPutStrLn, stderr)
 
-import Web.Trello.Client (runTrelloClient, getMyBoards)
-import Web.Trello.Client.BaseUrl (production)
+import Trello.Client (ClientEnv(..), Key, Token, getMyBoards, production,
+                      runTrelloClient)
 
-data Cmd =
-    Now
+data Cmd
+    = Now
     deriving (Show, Read)
 
 data Options = Options
     { o_verbose :: Bool
-    , o_cmd :: Cmd
+    , o_cmd     :: Cmd
     } deriving (Show)
 
 programInfo :: ParserInfo Options
@@ -47,7 +47,7 @@ programInfo =
 
 main :: IO ()
 main = do
-    options@Options {o_cmd} <- execParser programInfo
+    options@Options{o_cmd} <- execParser programInfo
     (`runReaderT` options) $ do
         logVerbose $ "options = " <> show options
         runCmd o_cmd
@@ -64,10 +64,20 @@ runCmd
     => Cmd -> io ()
 runCmd Now = do
     manager <- liftIO $ newManager tlsManagerSettings
-    liftIO . giveup . runTrelloClient manager production $
+    key <- loadKey
+    token <- loadToken
+    let clientEnv = ClientEnv{manager, baseurl=production, key, token}
+    liftIO . giveup . runTrelloClient clientEnv $
         getMyBoards >>= liftIO . print
 
+-- | Run 'EitherT' action in a dirty manner -- throwing error as exception.
 giveup
     :: (MonadIO io, Exception e)
     => ExceptT e io a -> io a
 giveup = runExceptT >=> either (liftIO . throwIO) pure
+
+loadKey :: io Key
+loadKey = undefined
+
+loadToken :: io Token
+loadToken = undefined

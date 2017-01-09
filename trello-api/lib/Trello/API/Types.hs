@@ -1,10 +1,10 @@
 {-# LANGUAGE TemplateHaskell #-}
 
-module Web.Trello.API.Types
-  ( Board
-  ) where
+module Trello.API.Types
+    ( Board
+    ) where
 
-import Data.Aeson.TH (deriveFromJSON, defaultOptions)
+import Data.Aeson.TH (defaultOptions, deriveFromJSON)
 
 data Board =
     Board
