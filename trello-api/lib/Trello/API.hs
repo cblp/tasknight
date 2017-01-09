@@ -4,8 +4,8 @@
 
 module Trello.API
     ( API
-    , Key
-    , Token
+    , Key(..)
+    , Token(..)
     , api
     ) where
 

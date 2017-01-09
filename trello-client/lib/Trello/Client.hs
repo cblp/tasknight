@@ -3,8 +3,8 @@
 
 module Trello.Client
     ( ClientEnv(..)
-    , Key
-    , Token
+    , Key(..)
+    , Token(..)
     , production
     , runTrelloClient
     -- * API Methods
@@ -18,7 +18,7 @@ import Control.Monad.Trans (lift)
 import Network.HTTP.Client (Manager)
 import Servant.Client (BaseUrl, ServantError)
 
-import Trello.API (Key, Token)
+import Trello.API (Key(..), Token(..))
 import Trello.API.Types (Board)
 
 import           Trello.Client.BaseUrl (production)

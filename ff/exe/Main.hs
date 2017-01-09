@@ -3,22 +3,28 @@
 
 module Main where
 
-import Control.Exception (Exception, throwIO)
-import Control.Monad (when, (>=>))
-import Control.Monad.Except (ExceptT, runExceptT)
-import Control.Monad.IO.Class (MonadIO, liftIO)
-import Control.Monad.Reader (MonadReader, asks, runReaderT)
-import Data.Maybe (fromMaybe)
-import Data.Monoid ((<>))
-import Network.HTTP.Client (newManager)
-import Network.HTTP.Client.TLS (tlsManagerSettings)
-import Options.Applicative (ParserInfo, command, execParser, fullDesc, help,
-                            helper, info, long, optional, progDesc, short,
-                            subparser, switch)
-import System.IO (hPutStrLn, stderr)
+import           Control.Exception (Exception, throwIO)
+import           Control.Monad (when, (>=>))
+import           Control.Monad.Except (ExceptT, runExceptT)
+import           Control.Monad.IO.Class (MonadIO, liftIO)
+import           Control.Monad.Reader (MonadReader, asks, runReaderT)
+import qualified Data.ByteString as ByteString
+import           Data.Maybe (fromMaybe)
+import           Data.Monoid ((<>))
+import           Data.Text (Text)
+import qualified Data.Text as Text
+import           Data.Text.Encoding (decodeUtf8)
+import           Network.HTTP.Client (newManager)
+import           Network.HTTP.Client.TLS (tlsManagerSettings)
+import           Options.Applicative (ParserInfo, command, execParser, fullDesc,
+                                      help, helper, info, long, optional,
+                                      progDesc, short, subparser, switch)
+import           System.Environment.XDG.BaseDir (getUserCacheFile)
+import           System.FilePath ((</>))
+import           System.IO (hPutStrLn, stderr)
 
-import Trello.Client (ClientEnv(..), Key, Token, getMyBoards, production,
-                      runTrelloClient)
+import Trello.Client (ClientEnv(..), Key(..), Token(..), getMyBoards,
+                      production, runTrelloClient)
 
 data Cmd
     = Now
@@ -26,7 +32,7 @@ data Cmd
 
 data Options = Options
     { o_verbose :: Bool
-    , o_cmd     :: Cmd
+    , o_cmd :: Cmd
     } deriving (Show)
 
 programInfo :: ParserInfo Options
@@ -76,8 +82,19 @@ giveup
     => ExceptT e io a -> io a
 giveup = runExceptT >=> either (liftIO . throwIO) pure
 
-loadKey :: io Key
-loadKey = undefined
+loadKey :: MonadIO io => io Key
+loadKey = Key <$> readCacheItem "key"
 
-loadToken :: io Token
-loadToken = undefined
+loadToken :: MonadIO io => io Token
+loadToken = Token <$> readCacheItem "token"
+
+readCacheItem
+    :: MonadIO io
+    => FilePath -- file path relative to application cache directory
+    -> io Text
+readCacheItem name = do
+    file <- getCacheFilePath name
+    Text.strip <$> readFileUtf8 file
+  where
+    readFileUtf8 = liftIO . fmap decodeUtf8 . ByteString.readFile
+    getCacheFilePath = liftIO . getUserCacheFile ("tasknight" </> "client")
