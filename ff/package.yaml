@@ -19,5 +19,6 @@ dependencies:
   - text
   - transformers
   - xdg-basedir
+  - yaml
   # project
   - trello-client

@@ -4,12 +4,13 @@ module Trello.API.Types
     ( Board(..)
     ) where
 
-import Data.Aeson.TH (defaultOptions, deriveFromJSON)
+import Data.Aeson.TH (defaultOptions, deriveJSON)
 import Data.Text (Text)
 
 data Board = Board
     { name :: Text
+    -- , powerUps :: [Text] -- always empty?
     }
     deriving (Show)
 
-deriveFromJSON defaultOptions ''Board
+deriveJSON defaultOptions ''Board

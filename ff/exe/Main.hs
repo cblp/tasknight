@@ -8,12 +8,13 @@ import           Control.Monad (when, (>=>))
 import           Control.Monad.Except (ExceptT, runExceptT)
 import           Control.Monad.IO.Class (MonadIO, liftIO)
 import           Control.Monad.Reader (MonadReader, asks, runReaderT)
-import qualified Data.ByteString as ByteString
+import qualified Data.ByteString.Char8 as ByteString
 import           Data.Maybe (fromMaybe)
 import           Data.Monoid ((<>))
 import           Data.Text (Text)
 import qualified Data.Text as Text
 import           Data.Text.Encoding (decodeUtf8)
+import qualified Data.Yaml as Yaml
 import           Network.HTTP.Client (newManager)
 import           Network.HTTP.Client.TLS (tlsManagerSettings)
 import           Options.Applicative (ParserInfo, command, execParser, fullDesc,
@@ -74,7 +75,7 @@ runCmd Now = do
     token <- loadToken
     let clientEnv = ClientEnv{manager, baseurl=production, key, token}
     liftIO . giveup . runTrelloClient clientEnv $
-        getMyBoards >>= liftIO . print
+        getMyBoards >>= liftIO . ByteString.putStrLn . Yaml.encode
 
 -- | Run 'EitherT' action in a dirty manner -- throwing error as exception.
 giveup
